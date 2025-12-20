@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deyim Ustası: Kontrollü Telaffuz</title>
+    <style>
+        :root { --primary: #2196F3; --success: #4CAF50; --error: #f44336; --bg: #f8f9fa; --card-bg: #ffffff; --text: #333; }
+        .dark-mode { --bg: #111; --card-bg: #222; --text: #eee; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; transition: 0.3s; }
+        .game-card { background: var(--card-bg); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); text-align: center; max-width: 850px; width: 100%; position: relative;}
+        
+        .btn-row { display: flex; align-items: center; gap: 5px; width: 100%; }
+        .btn { flex-grow: 1; padding: 12px; border: 2px solid #ddd; border-radius: 10px; background: var(--card-bg); color: var(--text); cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .speaker-btn { padding: 10px; border: 1px solid #ddd; border-radius: 10px; background: #eee; cursor: pointer; font-size: 1.2em; transition: 0.2s; color: #333; }
+        .speaker-btn:hover { background: #ddd; }
+
+        .btn-ultra { border-color: #ff00ff; color: #ff00ff; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+        
+        .timer-bar { width: 100%; height: 15px; background: #333; border-radius: 10px; margin: 15px 0; overflow: hidden; }
+        #timer-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #4CAF50, #2196F3); transition: width 0.1s linear; }
+        
+        .quiz-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .column { display: flex; flex-direction: column; gap: 10px; }
+        
+        .test-opt { padding: 15px; border: 2px solid #555; border-radius: 12px; cursor: pointer; margin-top: 10px; text-align: left; }
+        .selected { border-color: var(--primary); background: rgba(33, 150, 243, 0.2); }
+        .correct { background-color: var(--success) !important; color: white; border-color: var(--success); }
+        .wrong { background-color: var(--error) !important; color: white; border-color: var(--error); }
+        
+        #party-btn { background: linear-gradient(45deg, #9c27b0, #e91e63); color: white; border: none; padding: 18px; border-radius: 50px; display: none; width: 100%; margin-top: 20px; cursor:pointer; font-weight: bold; }
+        #canvas { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 1000; }
+    </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="game-card">
+    <div id="menu">
+        <h1>Deyim Ustası V.5</h1>
+        <p>🔊 İkonuna basarak telaffuzu dinleyebilirsiniz.</p>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <button class="btn" style="color:green" onclick="startGame('easy')">KOLAY</button>
+            <button class="btn" style="color:orange" onclick="startGame('hard')">ZOR</button>
+            <button class="btn btn-ultra" onclick="startGame('ultra')">🔥🔥 ULTRA 🔥🔥</button>
+        </div>
+    </div>
+
+    <div id="game" style="display:none;">
+        <div id="timer-ui">
+            <div class="timer-bar"><div id="timer-fill"></div></div>
+            <div id="time-text" style="font-weight:bold;">Süre: --</div>
+        </div>
+        <div style="font-size: 1.2em; font-weight:bold; margin: 10px 0;">Puan: <span id="score-display">0</span></div>
+        <hr>
+        <div id="game-area"></div>
+        <button id="next-btn" class="btn" style="display:none; width:100%; background:var(--primary); color:white; margin-top:20px;" onclick="initTestStage()">Test Aşamasına Geç ➔</button>
+        <button id="party-btn" onclick="celebrate()">✨ TEBRİKLER! PARTİ ZAMANI ✨</button>
+    </div>
+</div>
+
+<script>
+    const idiomsPool = [
+        {en: "Piece of cake", tr: "Çocuk oyuncağı"}, {en: "Break a leg", tr: "İyi şanslar"},
+        {en: "Under the weather", tr: "Halsiz"}, {en: "Time flies", tr: "Zaman uçar"},
+        {en: "Bite the bullet", tr: "Dişini sıkmak"}, {en: "Call it a day", tr: "Paydos etmek"},
+        {en: "Hit the sack", tr: "Yatıp uyumak"}, {en: "Once in a blue moon", tr: "Kırk yılda bir"}
+    ];
+
+    const testPool = [
+        { q: "Yatıp uyumak anlamına gelen deyim hangisidir?", a: ["Piece of cake", "Hit the sack", "Time flies", "Break a leg"], c: 1 },
+        { q: "'Bite the bullet' ne anlama gelir?", a: ["Mermiyi ısırmak", "Pes etmek", "Zorluğa göğüs germek", "Hızlı koşmak"], c: 2 }
+    ];
+
+    let score = 0, timeLeft = 0, initialTime = 0, timerInterval;
+    let matchesFound = 0, targetMatches = 0, selectedEng = null, selectedTr = null;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep(freq, type, duration = 0.2) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = type || 'sine'; osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        osc.start(); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function speak(txt) {
+        const u = new SpeechSynthesisUtterance(txt); u.lang = 'en-US';
+        window.speechSynthesis.speak(u);
+    }
+
+    function startGame(diff) {
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('game').style.display = 'block';
+        if(diff === 'easy') { targetMatches = 4; document.getElementById('timer-ui').style.display = 'none'; }
+        else if(diff === 'hard') { targetMatches = 6; timeLeft = initialTime = 60; startTimer(); }
+        else { targetMatches = 8; timeLeft = initialTime = 40; startTimer(); }
+        initMatchStage();
+    }
+
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            timeLeft -= 0.1;
+            document.getElementById('timer-fill').style.width = (timeLeft/initialTime*100) + "%";
+            document.getElementById('time-text').innerText = `Süre: ${Math.ceil(timeLeft)}s`;
+            if(timeLeft <= 0) { clearInterval(timerInterval); alert("Süre doldu!"); location.reload(); }
+        }, 100);
+    }
+
+    function initMatchStage() {
+        const area = document.getElementById('game-area');
+        area.innerHTML = '<h3>Deyimleri Eşleştir</h3>';
+        const cont = document.createElement('div'); cont.className = 'quiz-container';
+        const col1 = document.createElement('div'); col1.className = 'column';
+        const col2 = document.createElement('div'); col2.className = 'column';
+
+        let pool = [...idiomsPool].sort(() => Math.random() - 0.5).slice(0, targetMatches);
+
+        pool.forEach(item => {
+            const row = document.createElement('div'); row.className = 'btn-row';
+            const b = document.createElement('button'); b.className = 'btn'; b.innerText = item.en;
+            const s = document.createElement('button'); s.className = 'speaker-btn'; s.innerHTML = '🔊';
+            
+            s.onclick = (e) => { e.stopPropagation(); speak(item.en); };
+            b.onclick = () => { if(selectedEng) selectedEng.classList.remove('selected'); selectedEng = b; b.classList.add('selected'); check(); };
+            
+            row.append(s, b); col1.appendChild(row);
+        });
+
+        [...pool].sort(() => Math.random() - 0.5).forEach(item => {
+            const b = document.createElement('button'); b.className = 'btn'; b.innerText = item.tr;
+            b.onclick = () => { if(selectedTr) selectedTr.classList.remove('selected'); selectedTr = b; b.classList.add('selected'); check(); };
+            col2.appendChild(b);
+        });
+
+        cont.append(col1, col2); area.appendChild(cont);
+    }
+
+    function check() {
+        if(selectedEng && selectedTr) {
+            const match = idiomsPool.find(i => i.en === selectedEng.innerText && i.tr === selectedTr.innerText);
+            if(match) {
+                playBeep(880, 'sine');
+                selectedEng.className = 'btn correct'; selectedTr.className = 'btn correct';
+                score += 10; matchesFound++;
+                selectedEng = null; selectedTr = null;
+                if(matchesFound === targetMatches) document.getElementById('next-btn').style.display = 'block';
+            } else {
+                playBeep(150, 'square');
+                selectedEng.className = 'btn wrong'; selectedTr.className = 'btn wrong';
+                score = Math.max(0, score - 5); timeLeft -= 2;
+                setTimeout(() => { 
+                    if(selectedEng) selectedEng.className = 'btn';
+                    if(selectedTr) selectedTr.className = 'btn';
+                    selectedEng = null; selectedTr = null;
+                }, 500);
+            }
+            document.getElementById('score-display').innerText = score;
+        }
+    }
+
+    function initTestStage() {
+        document.getElementById('next-btn').style.display = 'none';
+        const area = document.getElementById('game-area');
+        const qData = testPool[Math.floor(Math.random()*testPool.length)];
+        area.innerHTML = `<h3>TEST</h3><p>${qData.q}</p>`;
+        qData.a.forEach((opt, idx) => {
+            const d = document.createElement('div'); d.className = 'test-opt'; d.innerText = opt;
+            d.onclick = () => {
+                if(idx === qData.c) { playBeep(1000); d.className = 'test-opt correct'; score += 30; setTimeout(finish, 1000); }
+                else { playBeep(100); d.className = 'test-opt wrong'; score -= 10; }
+                document.getElementById('score-display').innerText = score;
+            };
+            area.appendChild(d);
+        });
+    }
+
+    function finish() {
+        clearInterval(timerInterval);
+        document.getElementById('game-area').innerHTML = `<h2>TEBRİKLER! PUAN: ${score}</h2>`;
+        document.getElementById('party-btn').style.display = 'block';
+    }
+
+    function celebrate() {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        let p = Array.from({length: 100}, () => ({ x: Math.random()*canvas.width, y: canvas.height, c: `hsl(${Math.random()*360},100%,50%)`, v: Math.random()*5+2 }));
+        function anim() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            p.forEach(i => { i.y -= i.v; ctx.fillStyle = i.c; ctx.fillRect(i.x, i.y, 5, 5); });
+            requestAnimationFrame(anim);
+        }
+        anim();
+    }
+</script>
+</body>
+</html>
