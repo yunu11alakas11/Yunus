@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idiom Master: Chaos Edition</title>
+    <style>
+        :root {
+            --bg: #ffffff; --card-bg: #f8f9fa; --text: #333; --border: #ddd; --accent: #2196F3;
+            --easy: #4CAF50; --hard: #FF9800; --multi: #f44336; --impossible: #000000;
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text);
+            display: flex; flex-direction: column; align-items: center; padding: 20px; transition: 0.3s;
+            overflow-x: hidden;
+        }
+
+        .game-card { 
+            background: var(--card-bg); padding: 30px; border-radius: 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; max-width: 850px; width: 100%; position: relative;
+        }
+
+        /* Screen Shake Animation */
+        @keyframes shakeEffect {
+            0% { transform: translate(2px, 2px); }
+            20% { transform: translate(-2px, -4px); }
+            40% { transform: translate(-6px, 0px); }
+            60% { transform: translate(6px, 2px); }
+            80% { transform: translate(-2px, -2px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .shake-screen { animation: shakeEffect 0.3s ease-in-out; }
+
+        /* Level Specific Buttons */
+        .btn-easy { border: 2px solid var(--easy) !important; color: var(--easy); }
+        .btn-hard { border: 2px solid var(--hard) !important; color: var(--hard); }
+        .btn-multi { border: 2px solid var(--multi) !important; color: var(--multi); }
+        
+        .btn-impossible { 
+            background: #000 !important; color: #ff0000 !important; border: 2px solid #ff0000 !important;
+            animation: impossibleVibrate 0.15s infinite; font-weight: 900 !important;
+        }
+
+        @keyframes impossibleVibrate {
+            0% { transform: translate(1px, 1px); }
+            50% { transform: translate(-1px, -1px); }
+            100% { transform: translate(1px, -1px); }
+        }
+
+        .btn-row { display: flex; align-items: center; gap: 8px; width: 100%; }
+        .btn { 
+            flex-grow: 1; padding: 12px; border: 2px solid var(--border); border-radius: 10px; 
+            background: transparent; color: var(--text); cursor: pointer; font-weight: bold; transition: 0.2s;
+        }
+
+        .speaker-btn { padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: white; cursor: pointer; font-size: 1.2em; }
+
+        .timer-bar { width: 100%; height: 15px; background: #eee; border-radius: 10px; overflow: hidden; margin-top: 10px; }
+        #timer-fill { width: 100%; height: 100%; background: var(--accent); transition: width 0.1s linear; }
+
+        .quiz-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .column { display: flex; flex-direction: column; gap: 10px; }
+        
+        .selected { border-color: var(--accent) !important; background: rgba(33, 150, 243, 0.1) !important; }
+        .correct { background-color: var(--easy) !important; color: white !important; animation: none !important; }
+        .wrong { background-color: var(--multi) !important; color: white !important; }
+
+        #action-btn, #menu-btn { 
+            background: var(--accent); color: white; border: none; padding: 15px; border-radius: 10px; 
+            cursor:pointer; font-weight: bold; margin-top: 15px; width: 100%; font-size: 1.1em;
+        }
+        #canvas { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 1000; }
+    </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="game-card" id="main-card">
+    <div id="menu">
+        <h1>IDIOM MASTER</h1>
+        <p>Select Difficulty:</p>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <button class="btn btn-easy" onclick="startGame('easy')">EASY MODE</button>
+            <button class="btn btn-hard" onclick="startGame('hard')">HARD MODE</button>
+            <button class="btn btn-multi" onclick="startGame('multi')">MULTI HARD MODE</button>
+            <button class="btn btn-impossible" onclick="startGame('impossible')">IMPOSSIBLE MODE</button>
+        </div>
+    </div>
+
+    <div id="game" style="display:none;">
+        <h2 id="game-title">MATCHING PHASE</h2>
+        <div id="timer-ui">
+            <div class="timer-bar"><div id="timer-fill"></div></div>
+            <div id="time-text" style="font-weight:bold; margin-top:5px;">Time Left: --</div>
+        </div>
+        <div style="font-size: 1.2em; font-weight:bold; margin: 10px 0;">Score: <span id="score-display">0</span></div>
+        <hr>
+        <div id="game-area"></div>
+        <button id="action-btn" style="display:none;" onclick="handleAction()">Next Phase ➔</button>
+        <button id="menu-btn" style="display:none; background:#555;" onclick="location.reload()">Back to Menu</button>
+    </div>
+</div>
+
+<script>
+    const idiomsPool = [
+        {en: "Piece of cake", tr: "Çocuk oyuncağı"}, {en: "Break a leg", tr: "İyi şanslar"},
+        {en: "Under the weather", tr: "Halsiz"}, {en: "Time flies", tr: "Zaman uçar"},
+        {en: "Bite the bullet", tr: "Dişini sıkmak"}, {en: "Call it a day", tr: "Paydos etmek"},
+        {en: "Hit the sack", tr: "Yatıp uyumak"}, {en: "Once in a blue moon", tr: "Kırk yılda bir"}
+    ];
+
+    let score = 0, timeLeft = 0, initialTime = 0, timerInterval;
+    let matchesFound = 0, targetMatches = 0, selectedEng = null, selectedTr = null, currentDiff = '';
+    let gameState = 'matching';
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(freq, type = 'sine') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        osc.start(); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
+        osc.stop(audioCtx.currentTime + 0.4);
+    }
+
+    function speak(txt) {
+        const u = new SpeechSynthesisUtterance(txt); u.lang = 'en-US';
+        window.speechSynthesis.speak(u);
+    }
+
+    function startGame(diff) {
+        currentDiff = diff;
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('game').style.display = 'block';
+        if(diff === 'easy') { targetMatches = 4; document.getElementById('timer-ui').style.display = 'none'; }
+        else {
+            targetMatches = diff === 'hard' ? 6 : (diff === 'multi' ? 8 : 10);
+            timeLeft = initialTime = (diff === 'hard' ? 60 : (diff === 'multi' ? 45 : 30));
+            startTimer();
+        }
+        initMatchStage();
+    }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft -= 0.1;
+            document.getElementById('timer-fill').style.width = (timeLeft/initialTime*100) + "%";
+            document.getElementById('time-text').innerText = `Time Left: ${Math.ceil(timeLeft)}s`;
+            if(timeLeft <= 0) { clearInterval(timerInterval); alert("Game Over!"); location.reload(); }
+        }, 100);
+    }
+
+    function initMatchStage() {
+        const area = document.getElementById('game-area');
+        area.innerHTML = '';
+        const cont = document.createElement('div'); cont.className = 'quiz-container';
+        const col1 = document.createElement('div'); col1.className = 'column';
+        const col2 = document.createElement('div'); col2.className = 'column';
+        let pool = [...idiomsPool].sort(() => Math.random() - 0.5).slice(0, targetMatches);
+        pool.forEach(item => {
+            const row = document.createElement('div'); row.className = 'btn-row';
+            const s = document.createElement('button'); s.className = 'speaker-btn'; s.innerHTML = '🔊';
+            const b = document.createElement('button'); b.className = 'btn btn-' + currentDiff; b.innerText = item.en;
+            s.onclick = () => speak(item.en);
+            b.onclick = () => { if(selectedEng) selectedEng.classList.remove('selected'); selectedEng = b; b.classList.add('selected'); check(); };
+            row.append(s, b); col1.appendChild(row);
+        });
+        [...pool].sort(() => Math.random() - 0.5).forEach(item => {
+            const b = document.createElement('button'); b.className = 'btn btn-' + currentDiff; b.innerText = item.tr;
+            b.onclick = () => { if(selectedTr) selectedTr.classList.remove('selected'); selectedTr = b; b.classList.add('selected'); check(); };
+            col2.appendChild(b);
+        });
+        cont.append(col1, col2); area.appendChild(cont);
+    }
+
+    function check() {
+        if(selectedEng && selectedTr) {
+            const match = idiomsPool.find(i => i.en === selectedEng.innerText && i.tr === selectedTr.innerText);
+            if(match) {
+                playSound(880); selectedEng.className = 'btn correct'; selectedTr.className = 'btn correct';
+                score += 10; matchesFound++; selectedEng = null; selectedTr = null;
+                if(matchesFound === targetMatches) { document.getElementById('action-btn').style.display = 'block'; document.getElementById('action-btn').innerText = 'Start Quiz Phase ➔'; }
+            } else {
+                // Kalın Hata Sesi
+                playSound(120, 'square');
+                // Multi Hard ve Impossible'da Ekran Sallantısı
+                if(currentDiff === 'multi' || currentDiff === 'impossible') {
+                    const card = document.getElementById('main-card');
+                    card.classList.add('shake-screen');
+                    setTimeout(() => card.classList.remove('shake-screen'), 300);
+                }
+                selectedEng.className = 'btn wrong'; selectedTr.className = 'btn wrong';
+                score = Math.max(0, score - 5); timeLeft -= 3;
+                setTimeout(() => { if(selectedEng) selectedEng.className = 'btn btn-' + currentDiff; if(selectedTr) selectedTr.className = 'btn btn-' + currentDiff; selectedEng=null; selectedTr=null; }, 500);
+            }
+            document.getElementById('score-display').innerText = score;
+        }
+    }
+
+    function handleAction() {
+        if(gameState === 'matching') initTestStage();
+        else celebrate();
+    }
+
+    function initTestStage() {
+        gameState = 'quiz';
+        document.getElementById('game-title').innerText = 'QUIZ PHASE';
+        document.getElementById('action-btn').style.display = 'none';
+        const area = document.getElementById('game-area');
+        area.innerHTML = `<p style="font-size:1.2em; margin-bottom:20px;">What does 'Piece of cake' mean?</p>`;
+        const opts = ["Very hard", "Very easy", "Something to eat", "Lucky"];
+        opts.forEach((opt, idx) => {
+            const d = document.createElement('button'); d.className = 'btn btn-' + currentDiff; d.style.display = "block"; d.style.margin = "10px 0"; d.style.width = "100%"; d.innerText = opt;
+            d.onclick = () => {
+                if(idx === 1) { playSound(1000); d.className = 'btn correct'; score += 50; setTimeout(finish, 800); }
+                else { playSound(120, 'square'); 
+                    if(currentDiff === 'multi' || currentDiff === 'impossible') {
+                        document.getElementById('main-card').classList.add('shake-screen');
+                        setTimeout(() => document.getElementById('main-card').classList.remove('shake-screen'), 300);
+                    }
+                    d.className = 'btn wrong'; score -= 10; 
+                }
+                document.getElementById('score-display').innerText = score;
+            };
+            area.appendChild(d);
+        });
+    }
+
+    function finish() {
+        clearInterval(timerInterval);
+        document.getElementById('game-title').innerText = 'RESULTS';
+        document.getElementById('game-area').innerHTML = `<h2>GREAT JOB!</h2><h3>Final Score: ${score}</h3>`;
+        document.getElementById('action-btn').style.display = 'block';
+        document.getElementById('action-btn').innerText = '✨ CELEBRATE ✨';
+        document.getElementById('menu-btn').style.display = 'block';
+    }
+
+    function celebrate() {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        let p = Array.from({length: 100}, () => ({ x: Math.random()*canvas.width, y: canvas.height, c: `hsl(${Math.random()*360},100%,50%)`, v: Math.random()*6+2 }));
+        function anim() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            p.forEach(i => { i.y -= i.v; ctx.fillStyle = i.c; ctx.fillRect(i.x, i.y, 6, 6); });
+            requestAnimationFrame(anim);
+        }
+        anim();
+        playSound(600);
+    }
+</script>
+</body>
+</html>
