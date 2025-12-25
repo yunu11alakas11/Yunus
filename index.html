@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idiom Master Pro - Final Sunum</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        :root { 
+            --bg: #f4f7f6; --card-bg: #ffffff; --text: #2d3436; --border: #dfe6e9; --accent: #0984e3; 
+            --easy: #2ecc71; --normal: #1abc9c; --hard: #f1c40f; --expert: #e67e22; --impossible: #2d3436; 
+        }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); 
+            display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; transition: 0.3s;
+        }
+        .game-card { 
+            background: var(--card-bg); padding: 25px; border-radius: 20px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; 
+            max-width: 900px; width: 100%; position: relative; min-height: 800px; display: flex; flex-direction: column;
+        }
+        
+        /* Navigasyon */
+        .top-nav { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 10px; }
+        .nav-btn { padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
+        #theme-btn { background: var(--accent); }
+        #dict-btn { background: #636e72; }
+
+        /* Impossible Sallanma Animasyonu */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-2px) rotate(-1deg); }
+            50% { transform: translateX(2px) rotate(1deg); }
+            75% { transform: translateX(-2px) rotate(-1deg); }
+            100% { transform: translateX(0); }
+        }
+        .btn-impossible { 
+            background: #000 !important; color: #ff4757 !important; border: 2px solid #ff4757 !important; 
+            animation: shake 0.5s infinite; 
+        }
+        .btn-impossible:hover { background: #ff4757 !important; color: #fff !important; }
+
+        /* Genel Butonlar */
+        .btn { 
+            padding: 15px; border: 2px solid var(--border); border-radius: 12px; 
+            background: transparent; color: var(--text); cursor: pointer; 
+            font-weight: bold; transition: 0.2s; width: 100%; font-size: 14px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn:hover:not(:disabled) { border-color: var(--accent); background: rgba(9, 132, 227, 0.05); }
+
+        /* Oyun Alanı */
+        .stats-bar { display: flex; justify-content: space-between; font-weight: bold; padding: 15px; background: #f1f2f6; border-radius: 12px; margin-bottom: 15px; }
+        .quiz-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
+        .column { display: flex; flex-direction: column; gap: 10px; }
+        
+        /* Renk Kodları */
+        .btn-easy { border-color: var(--easy); color: var(--easy); }
+        .btn-normal { border-color: var(--normal); color: var(--normal); }
+        .btn-hard { border-color: var(--hard); color: var(--hard); }
+        .btn-expert { border-color: var(--expert); color: var(--expert); }
+
+        /* İlerleme ve Durumlar */
+        .progress-container { width: 100%; background: #dfe6e9; border-radius: 10px; margin: 10px 0; height: 10px; overflow: hidden; }
+        #progress-fill { height: 100%; background: var(--easy); width: 0%; transition: 0.5s; }
+        .selected { border-color: var(--accent) !important; background: #e1f5fe !important; }
+        .correct { background: var(--easy) !important; color: white !important; border: none !important; }
+        .wrong { background: #ff4757 !important; color: white !important; border: none !important; }
+        
+        #dictionary-view { 
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: white; z-index: 200; padding: 25px; box-sizing: border-box; overflow-y: auto; border-radius: 20px;
+        }
+        .day-box { margin-top: 25px; padding: 15px; background: #f1f2f6; border-radius: 15px; }
+        .speak-btn { background: none; border: none; cursor: pointer; font-size: 1.2em; }
+
+        /* Firebase Ekstra Stilleri */
+        .firebase-stats { font-size: 0.8em; color: var(--accent); margin-bottom: 10px; font-weight: bold; }
+        .leaderboard-section { margin-top: 20px; border-top: 2px dashed #ddd; padding-top: 10px; }
+        .leaderboard-table { width: 100%; font-size: 0.85em; border-collapse: collapse; }
+        .leaderboard-table td { padding: 5px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<div class="game-card" id="main-card">
+    <div id="fb-visitor" class="firebase-stats">Bağlanıyor...</div>
+
+    <div class="top-nav">
+        <button id="theme-btn" class="nav-btn" onclick="toggleTheme()">🎨 Tema</button>
+        <button id="dict-btn" class="nav-btn" onclick="toggleDictionary()">📖 Sözlük</button>
+    </div>
+
+    <div id="menu">
+        <h1 style="margin: 10px 0;">IDIOM MASTER PRO</h1>
+        <div style="font-size: 0.9em; color: #636e72; margin-bottom: 20px;">🏆 Rekorun: <span id="best-score">0</span></div>
+        
+        <div style="max-width:350px; margin: 0 auto; display:grid; gap:12px;">
+            <button class="btn btn-easy" onclick="startGame('easy')">KOLAY SEVİYE</button>
+            <button class="btn btn-normal" onclick="startGame('normal')">ORTA SEVİYE</button>
+            <button class="btn btn-hard" onclick="startGame('hard')">ZOR SEVİYE</button>
+            <button class="btn btn-expert" onclick="startGame('expert')">UZMAN SEVİYE</button>
+            <button class="btn btn-impossible" onclick="startGame('impossible')">İMKANSIZ SEVİYE 💀</button>
+        </div>
+
+        <div class="leaderboard-section">
+            <h4 style="margin:5px;">🌍 DÜNYA SIRALAMASI (TOP 5)</h4>
+            <table class="leaderboard-table">
+                <tbody id="fb-leaderboard">
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="day-box">
+            <h4 style="margin:0; color:var(--accent);">GÜNÜN DEYİMİ</h4>
+            <div id="day-content" style="margin-top:8px;">
+                <b id="day-en">...</b> <button class="speak-btn" id="day-speak">🔊</button><br>
+                <small id="day-tr" style="color:#636e72;">...</small>
+            </div>
+        </div>
+    </div>
+
+    <div id="dictionary-view">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Deyim Kütüphanesi (550)</h3>
+            <button class="nav-btn" style="background:#333" onclick="toggleDictionary()">Kapat</button>
+        </div>
+        <div class="progress-container"><div id="progress-fill"></div></div>
+        <div id="progress-text" style="font-size:0.8em; margin-bottom:15px;">Öğrenilen: 0/550</div>
+        <div id="dict-list"></div>
+    </div>
+
+    <div id="game" style="display:none; flex-direction:column; height:100%;">
+        <div class="stats-bar">
+            <span>TUR: <span id="round-val">1</span>/5</span>
+            <span>PUAN: <span id="score-val">0</span></span>
+        </div>
+        <div id="timer-bar" style="width:100%; height:6px; background:#eee; border-radius:3px; margin-bottom:15px; overflow:hidden;">
+            <div id="timer-fill" style="width:100%; height:100%; background:var(--accent); transition:0.1s linear;"></div>
+        </div>
+        <div id="game-area"></div>
+        <div style="display:flex; gap:10px; margin-top:20px; justify-content:center;">
+            <button id="hint-btn" class="btn" style="width:auto; padding:8px 15px;" onclick="useHint()">💡 İpucu (-10)</button>
+            <button id="next-btn" class="btn" style="display:none; background:var(--accent); color:white; width:auto;" onclick="nextStep()">Sıradaki Tur ⚡</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ########## FIREBASE KURULUMU ##########
+const firebaseConfig = {
+    apiKey: "AIzaSyC1h5GomEegVsaxLW69WdpAPi7jWeSMiU",
+    authDomain: "idiom-master-73674.firebaseapp.com",
+    databaseURL: "https://idiom-master-73674-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "idiom-master-73674",
+    storageBucket: "idiom-master-73674.appspot.com",
+    messagingSenderId: "974516904552",
+    appId: "1:974516904552:web:8a5c17ff572241aa0611dd"
+};
+
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+// Ziyaretçi Sayacı İşlemi
+database.ref('ziyaretci_sayisi').transaction(c => (c || 0) + 1);
+database.ref('ziyaretci_sayisi').on('value', snap => {
+    document.getElementById('fb-visitor').innerText = "👥 Toplam Ziyaretçi: " + snap.val();
+});
+
+// Dünya Sıralamasını Çekme
+database.ref('skorlar').orderByChild('puan').limitToLast(5).on('value', snap => {
+    const list = document.getElementById('fb-leaderboard');
+    list.innerHTML = "";
+    let items = [];
+    snap.forEach(c => { items.push(c.val()); });
+    items.reverse().forEach((data, i) => {
+        list.innerHTML += `<tr><td>${i+1}.</td><td>${data.isim}</td><td><b>${data.puan}</b></td></tr>`;
+    });
+});
+
+// ########## OYUN VERİ SETİ (AYNI KALDI) ##########
+const rawData = [
+    ["Piece of cake","Çok kolay"],["Time flies","Zaman uçar"],["Break a leg","Başarılar"],["Good luck","Bol şans"],["Well done","Aferin"],["Take care","Kendine iyi bak"],["Never mind","Boşver"],["Keep it up","Aynen devam"],["Watch out","Dikkat et"],["Come on","Hadi ama"],["Go ahead","Devam et"],["Calm down","Sakin ol"],["Don't worry","Endişelenme"],["Of course","Tabii ki"],["Be careful","Dikkatli ol"],["Slow down","Yavaşla"],["Hurry up","Acele et"],["Shut up","Kapa çeneni"],["Wake up","Uyan"],["Get up","Kalk"],["Sit down","Otur"],["Stand up","Ayağa kalk"],["Listen up","Dinleyin"],["Look out","Dikkat et"],["Turn on","Açmak"],["Turn off","Kapatmak"],["Give up","Vazgeçmek"],["Work out","Egzersiz"],["Find out","Keşfetmek"],["Grow up","Büyümek"],["Catch up","Yetişmek"],["Call me","Ara beni"],["Follow me","Takip et"],["I agree","Katılıyorum"],["Me too","Ben de"],["Not yet","Henüz değil"],["So far","Şu ana kadar"],["Right now","Tam şu an"],["At last","Sonunda"],["By the way","Bu arada"],["For sure","Kesinlikle"],["My bad","Benim hatam"],["What's up","Naber"],["How come","Nasıl yani"],["No way","Olamaz"],["Guess what","Bil bakalım"],["Who knows","Kim bilir"],["Why not","Neden olmasın"],["See you","Görüşürüz"],["Hold on","Bekle"],["No problem","Sorun değil"],["Help yourself","Buyurun"],["Sounds good","Kulağa hoş"],["Keep going","Devam et"],["Stay calm","Sakin kal"],["Trust me","Güven bana"],["Let's go","Hadi gidelim"],["I'm sure","Eminim"],["No doubt","Şüphesiz"],["Be quiet","Sessiz ol"],["Speak up","Sesli konuş"],["Don't panic","Panik yapma"],["I promise","Söz veriyorum"],["Excuse me","Afedersiniz"],["Bless you","Çok yaşa"],["Cheers","Şerefe"],["Have fun","İyi eğlenceler"],["Good night","İyi geceler"],["So long","Hoşça kal"],["Take it easy","Rahatına bak"],["Just kidding","Şaka"],["Forget it","Unut gitsin"],["Not bad","Fena değil"],["Pretty good","Bayağı iyi"],["Same here","Ben de"],["Be right back","Hemen döneceğim"],["Check it out","Şuna bak"],["Count me in","Ben de varım"],["Get lost","Kaybol"],["Go away","Git başımdan"],["Leave me alone","Yalnız bırak"],["I'm lost","Kayboldum"],["I'm broke","Parasızım"],["I'm full","Tokum"],["I'm home","Evdeyim"],["It depends","Duruma göre"],["It's ok","Sorun yok"],["Keep in touch","İletişimde kal"],["Let me know","Haber ver"],["Look at me","Bana bak"],["Try again","Tekrar dene"],["Wait for me","Beni bekle"],["What else","Başka ne"],["Whatever","Her neyse"],["All right","Pekala"],["Not a bit","Hiç değil"],["So be it","Öyle olsun"],["Carry on","Devam et"],["No thanks","Hayır teşekkürler"],["My pleasure","Zevkle"],["After you","Sizden sonra"],["I'm sorry","Üzgünüm"],["I don't know","Bilmiyorum"],["Think so","Öyle düşünüyorum"],["I hope so","Umarım öyle"],
+    ["Better late than never","Geç olsun güç olmasın"],["Call it a day","Paydos etmek"],["Cut corners","Kolaya kaçmak"],["Hit the sack","Uyumak"],["Under the weather","Hasta hissetmek"],["On the ball","İşini bilmek"],["Get over it","Aş bunu"],["Hang in there","Dayan"],["So far so good","Şimdilik iyi"],["Speak of the devil","İti an çomağı hazırla"],["Break the ice","Buzları eritmek"],["Cost an arm and a leg","Çok pahalı"],["Blessing in disguise","Gizli lütuf"],["Bite the bullet","Zorluğa katlanmak"],["Miss the boat","Fırsatı kaçırmak"],["No pain no gain","Emek olmadan olmaz"],["Pull someone's leg","Şaka yapmak"],["Best of both worlds","Her iki avantaj"],["Under control","Kontrol altında"],["Out of hand","Kontrolden çıkmış"],["Easy does it","Yavaş ve dikkatli"],["Cold shoulder","Soğuk davranmak"],["Let off the hook","Affetmek"],["Long story short","Uzun lafın kısası"],["The last straw","Son damla"],["Time is money","Vakit nakittir"],["Make matters worse","İşi yokuşa sürmek"],["Eye to eye","Hemfikir olmak"],["Weather the storm","Badireyi atlatmak"],["Wrap your head around","Kavramak"],["Say that again","Kesinlikle haklısın"],["Your guess is good","Ben de bilmiyorum"],["Dime a dozen","Sıradan/Bol"],["Add insult to injury","Tuz biber ekmek"],["Beat around the bush","Lafı dolandırmak"],["Barking up wrong tree","Yanlış kapı çalmak"],["Burn midnight oil","Gece çalışmak"],["Judge book by cover","Görünüşe aldanmak"],["Caught red handed","Suçüstü"],["Cry over spilled milk","Boşuna üzülmek"],["Curiosity killed cat","Merak kediyi öldürür"],["Cut to the chase","Sadede gel"],["Don't count chickens","Dereyi görmeden paça"],["Every cloud silver lining","Her şerde hayır"],["Hit nail on head","Tam üstüne basmak"],["Kill two birds one stone","Bir taşla iki kuş"],["Let cat out bag","Sırrı kaçırmak"],["Once in blue moon","Kırk yılda bir"],["Piece of the pie","Pay almak"],["Spill the beans","Baklayı çıkarmak"],["Take with grain of salt","Şüpheyle yaklaşmak"],["Ball in your court","Top sende"],["Go extra mile","Fazlasını yapmak"],["Head over heels","Sırılsıklam aşık"],["Heat of the moment","O anın heyecanı"],["Jump on bandwagon","Modaya uymak"],["Keep at bay","Uzak tutmak"],["Kill with kindness","Aşırı nazik olmak"],["Let sleeping dogs lie","Eşeleme kalsın"],["Method to madness","Deliliğin mantığı"],["Not playing full deck","Tahtası eksik"],["Off the hook","Kurtulmuş"],["On the fence","Kararsız"],["Over the top","Abartılı"],["Pass the buck","Suçu atmak"],["Eggs in one basket","Tüm riski alma"],["Rain on parade","Keyif kaçırmak"],["Save for rainy day","Zor gün akçesi"],["Sit tight","Sabırla bekle"],["Smell a rat","Bit yeniği sezmek"],["From horse's mouth","Birinci ağızdan"],["Rain check","Ertelemek"],["Whole nine yards","Tamamı/Hepsi"],["Through thick and thin","İyi günde kötü günde"],["Throw in towel","Pes etmek"],["Under the table","El altından"],["Up in the air","Belirsiz"],["Wild goose chase","Boş uğraş"],["Actions speak louder","İcraata bakılır"],["Back to drawing board","Sil baştan"],["Between rock hard place","İki arada bir derede"],["Bite off more than chew","Boyundan büyük iş"],["Birds of a feather","Tencere kapak"],["Burn bridges","Gemileri yakmak"],["Costs pretty penny","Tuzluya patlamak"],["Cut some slack","Müsamaha göstermek"],["Devil's advocate","Şeytanın avukatı"],["Drastic measures","Sert önlemler"],["Elvis has left","Şov bitti"],["Far cry from","Çıok farklı"],["Feel under weather","Keyifsiz"],["Benefit of doubt","Şüpheye rağmen inan"],["On the grapevine","Kulağına çalınmak"],["Blink of an eye","Göz açıp kapayınca"],["Two to tango","Tek taraflı olmaz"],["Think big","Büyük düşün"],["Keep it real","Doğal ol"],["No hard feelings","Kırılmak yok"],["Last but not least","Sonuncu ama önemli"],["Play it cool","Sakin davran"],["Stay tuned","Takipte kal"],["Up to you","Sana bağlı"],["Give it a shot","Dene bakalım"],["Fair and square","Hakkıyla"],["Back on feet","Düzelmek"],["Safe and sound","Sağ salim"],["By all means","Elbette"],["Out of blue","Aniden"],["So to speak","Tabiri caizse"],["As a matter of fact","Aslında"],
+    ["Keep chin up","Dik dur/Üzülme"],["Leave no stone unturned","Her yere bakmak"],["Like riding bicycle","Unutulmaz şey"],["Look before leap","Düşünmeden yapma"],["Make ends meet","Ay sonunu getirmek"],["On cloud nine","Mutluluktan uçmak"],["Once bitten twice shy","Sütten ağzı yanan"],["Out of frying pan","Yağmurdan doluya"],["Picture thousand words","Resim çok şey anlatır"],["Practice makes perfect","Pratik geliştirir"],["Pull yourself together","Kendine gel"],["Wool over eyes","Göz boyamak"],["Rome not built in day","Sabır gerekir"],["Rule of thumb","Göz kararı"],["Run out of steam","Pili bitmek"],["Saved by the bell","Son anda kurtulmak"],["Scapegoat","Günah keçisi"],["Show the ropes","İş öğretmek"],["Steal thunder","Rol çalmak"],["Stick to guns","Kararlı olmak"],["Pinch of salt","Temkinli olmak"],["No free lunch","Bedava peynir olmaz"],["Think outside box","Farklı düşünmek"],["Throw caution wind","Riski göze almak"],["Time heals all","Zaman ilaçtır"],["Too many cooks","Nerde çokluk"],["Two heads better","Akıl akıldan üstündür"],["Variety spice of life","Değişiklik iyidir"],["Wrong side of bed","Tersinden kalkmak"],["Heart on sleeve","Duygusu yüzünde"],["When in Rome","Uygun davranmak"],["When pigs fly","Çıkmaz ayın sonu"],["Have cake and eat it","Hem şoför mahalli"],["Zip your lip","Çeneni kapa"],["Hot potato","Çetrefilli konu"],["Against the clock","Zamana karşı"],["All ears","Can kulağıyla"],["Drop of a hat","Hemen"],["Back to square one","En başa dönmek"],["Black sheep","Yüz karası"],["Blue moon","Nadir olay"],["Break the bank","Servet harcamak"],["Skin of teeth","Kıl payı"],["Cast iron stomach","Sağlam mide"],["Chew the fat","Geyik yapmak"],["Close no cigar","Yaklaştın ama yok"],["Couch potato","Tembel"],["Cry eyes out","Hüngürdemek"],["Dead tired","Bitkin"],["Drive up the wall","Çıldırtmak"],["Dropping like flies","Telef olmak"],["Eager beaver","Hevesli/Çalışkan"],["Eat humble pie","Hatasını kabullenmek"],["Face the music","Bedel ödemek"],["Flesh and blood","Et ve tırnak"],["Full of beans","Enerjik"],["Get cold feet","Caymak/Korkmak"],["Get off my back","Rahat bırak"],["Give a hand","El uzatmak"],["Go cold turkey","Aniden bırakmak"],["Go with flow","Akışına bırakmak"],["Goody two shoes","Süt kuzusu"],["Green with envy","Kıskançlıktan çatlamak"],["Have a blast","Çok eğlenmek"],["Eyes in back of head","Ensesinde gözü var"],["Head in clouds","Hayalperest"],["Heart in mouth","Yüreği ağzında"],["Hold your horses","Dur bakalım"],["In hot water","Başı belada"],["Rings a bell","Tanıdık geldi"],["Straight face","İfadesiz surat"],["Keep shirt on","Sakin ol"],["Kick the bucket","Nalları dikmek"],["Knock on wood","Tahtaya vur"],["Know the ropes","Yol yordam bilmek"],["Let off steam","Stres atmak"],["Fish out of water","Sudan çıkmış balık"],["Loose cannon","Tehlikeli tip"],["Mountain out of molehill","Pireyi deve yapmak"],["Money burns hole","Para durmuyor"],["Mum's the word","Aramızda kalsın"],["Needle in haystack","Samanlıkta iğne"],["Off beaten track","Gözden uzak"],["Off the cuff","Doğaçlama"],["Old habits die hard","Huylu huyundan"],["On the house","Müesseseden"],["Pins and needles","Diken üstünde"],["Out of the blue","Aniden"],["Over the moon","Çok mutlu"],["Pain in the neck","Baş belası"],["Party pooper","Oyunbozan"],["Play by ear","Gelişine göre"],["Pull strings","Torpil yapmak"],["Put sock in it","Susmak"],["Foot in mouth","Pot kırmak"],["Raining cats dogs","Bardaktan boşalırcasına"],["Read between lines","İmayı anlamak"],["Rock the boat","Sorun çıkarmak"],["Rolling stone","İşleyen demir"],["Salt in wound","Yaraya tuz"],["Barking up wrong tree","Yanlış yere bakmak"],["Blow own trumpet","Kendini övmek"],["Busy as a bee","Arı gibi çalışkan"],["Cat's whiskers","Mükemmel"],["Diamond in rough","İşlenmemiş elmas"],["Fit as a fiddle","Turp gibi"],["In seventh heaven","Bulutların üstünde"],["Jumping for joy","Sevinçten uçmak"],["Light as a feather","Kuş gibi hafif"],["Piece of the action","Maceraya katılmak"],["Read my lips","Ağzımdan çıkanı duy"],["See eye to eye","Anlaşmak"],["Spill the beans","Sırrı açıklamak"],["Take a back seat","Geri planda kalmak"],["Walk on air","Çok mutlu olmak"],
+    ["Run like wind","Rüzgar gibi koş"],["Save your breath","Nefesini tüketme"],["Second wind","Yeniden güçlenme"],["Shoot the breeze","Havadan sudan"],["Sitting duck","Kolay hedef"],["Skeleton in closet","Kirli geçmiş"],["Sleep on it","Üstüne düşünmek"],["Slippery slope","Kötü gidişat"],["Smart cookie","Zeki"],["Sound broken record","Plak gibi takılmak"],["Spill the tea","Dedikodu yap"],["Stab in back","Sırtından vurmak"],["Stick nose into","Burnunu sokmak"],["Storm in teacup","Bir kaşık suda fırtına"],["Swallow pride","Gururunu yenmek"],["Take a hike","Bas git"],["Take five","Mola ver"],["Third time charm","Hakkı üçtür"],["Through grapevine","Söylentiyle"],["Throw under bus","Ateşe atmak"],["Tie the knot","Evlenmek"],["Tip of iceberg","Buzdağının ucu"],["Touch and go","Hassas durum"],["Turn blind eye","Görmezden gel"],["Under the gun","Baskı altında"],["Up the creek","Hapı yutmuş"],["Walking on eggshells","Temkinli olmak"],["Water under bridge","Geçmişte kaldı"],["Wear the pants","Patron olmak"],["Wet blanket","Neşesiz tip"],["White lie","Beyaz yalan"],["Wild card","Sürpriz faktör"],["Wolf in sheep","Koyun postunda kurt"],["You bet","Kesinlikle"],["Zero tolerance","Sıfır tolerans"],["Zip it","Sus"],["Ace up sleeve","Gizli koz"],["Achilles heel","Zayıf nokta"],["All bark no bite","Sadece havlar"],["Apple of eye","Göz bebeği"],["Easy as pie","Çocuk oyuncağı"],["Eleventh hour","Son dakika"],["Bad blood","Husumet"],["Big cheese","Patron"],["Black and white","Apaçık"],["Blind date","Kör randevu"],["Born yesterday","Dünkü çocuk"],["Break new ground","Çığır açmak"],["Bring home bacon","Evi geçindirmek"],["Bull in china shop","Züccaciyede fil"],["Burn candle both ends","Kendini tüketmek"],["Bury hatchet","Barışmak"],["Busy bee","Çalışkan arı"],["Butterflies in stomach","Karnında kelebekler"],["Call shots","Emir vermek"],["Can of worms","Karışık iş"],["Carrot and stick","Ödül ve ceza"],["Cat got tongue","Dilini mi yuttun"],["Catch 22","Çıkmaz döngü"],["Change of heart","Fikir değişikliği"],["Cheap skate","Cimri"],["Chicken out","Korkup kaçmak"],["Clean slate","Beyaz sayfa"],["Clear the air","Sorunu çözmek"],["Cold feet","Tereddüt"],["Come clean","İtiraf etmek"],["Copycat","Taklitçi"],["Couch for","Kefil olmak"],["Crack a book","Kitap açmak"],["Crack the code","Çözmek"],["Crash course","Hızlandırılmış kurs"],["Cream of crop","En iyisi"],["Crocodile tears","Timsah gözyaşları"],["Cross my heart","Yemin ederim"],["Cry wolf","Yalanla kandırmak"],["Cut the mustard","Beklentiyi aşmak"],["Dark horse","Kapalı kutu"],["Dead end","Çıkmaz sokak"],["Deep water","Zor durum"],["Dog eat dog","Acımasız rekabet"],["Double cross","Kazık atmak"],["Down to earth","Alçakgönüllü"],["Draw the line","Sınır çizmek"],["Drink like fish","Çok içmek"],["Drop the ball","Hata yapmak"],["Early bird","Erkenci"],["Eat crow","Tükürdüğünü yalamak"],["Eat dirt","Hakaret işitmek"],["Eat horse","Açlıktan ölmek"],["Face value","Görünür değer"],["Fair weather friend","İyi gün dostu"],["Fall flat","İşe yaramamak"],["Fat chance","Zayıf ihtimal"],["Feather in cap","Gurur kaynağı"],["Fifth wheel","Gereksiz kişi"],["Get a grip","Kendini topla"],["Go for broke","Varını yoğunu koymak"],["Have a cow","Sinirlenmek"],["High as a kite","Çakırkeyif"],["In a heartbeat","Göz açıp kapayınca"],["Jump the shark","Tadını kaçırmak"],["Keep a straight face","Ciddiyetini korumak"],["Laugh head off","Gülmekten kırılmak"],["Make a long story short","Kısacası"],["Neck and neck","At başı"],["Off the hook","Kurtulmuş"],["On cloud nine","Çok mutlu"],["Pull a fast one","Kandırmak"],["Ride shotgun","Ön koltukta gitmek"],["Shake a leg","Acele et"],["Take the plunge","Risk almak"],
+    ["Fight fire with fire","Dişe diş"],["Fishy","Şüpheli"],["Flat broke","Meteliksiz"],["Fly on wall","Gizli gözlemci"],["Food for thought","Düşündürücü"],["Fool's paradise","Hayal dünyası"],["Foot the bill","Hesabı ödemek"],["Full circle","Başa dönmek"],["Game plan","Strateji"],["Get act together","Kendini toplamak"],["Get axe","Kovulmak"],["Get grip","Kendine gel"],["Get life","Hayatına bak"],["Get wind of","Kokusunu almak"],["Gift of gab","Laf ebesi"],["Give break","Rahat bırak"],["Give slip","Atlatmak"],["Go bananas","Çıldırmak"],["Go belly up","İflas"],["Go dutch","Hesabı bölüş"],["Go overboard","Aşırıya kaçmak"],["Golden opportunity","Altın fırsat"],["Good samaritan","Hayırsever"],["Grain of truth","Doğruluk payı"],["Graveyard shift","Gece vardiyası"],["Grease palm","Rüşvet vermek"],["Green light","Onay"],["Grey area","Belirsiz durum"],["Gut feeling","İçgüdü"],["Hair's breadth","Kıl payı"],["Hand to mouth","Kıt kanaat"],["Hard nut to crack","Çetin ceviz"],["Haste makes waste","Acele işe şeytan"],["Have heart","Merhamet et"],["Heads will roll","Kelleler gidecek"],["Heart of gold","Altın kalp"],["Heavy heart","Üzgün kalp"],["High and dry","Ortada kalmış"],["High time","Tam zamanı"],["Hit road","Yola koyulmak"],["Hit spot","Tam isabet"],["Hold tongue","Dilini tut"],["Hold water","Mantıklı olmak"],["Hook line sinker","Körü körüne"],["Hot air","Boş laf"],["Icing on cake","Pastanın çileği"],["Idle hands","Boş duran el"],["In a nutshell","Özetle"],["In black and white","Yazılı"],["In drivers seat","Kontrolde"],["In full swing","Tam gaz"],["In pickle","Zorda"],["In same boat","Aynı gemide"],["Iron out","Pürüzleri gider"],["Itch to scratch","Can atmak"],["Jack of all trades","On parmağında on marifet"],["Jump gun","Erken davranmak"],["Jump ship","Terk etmek"],["Keep company","Eşlik etmek"],["Keep cool","Sakin kal"],["Keep posted","Haberdar et"],["Keep under wraps","Gizli tut"],["Kick habit","Alışkanlığı bırak"],["Kill time","Zaman öldürmek"],["Kiss and makeup","Barışmak"],["Knock socks off","Etkilemek"],["Know beans","Bilmemek"],["Labor of love","Gönüllü iş"],["Lame duck","Beceriksiz"],["Land on feet","Dört ayak üstüne"],["Last ditch","Son çare"],["Laughing stock","Alay konusu"],["Lay cards table","Kartları açmak"],["Learn by heart","Ezberlemek"],["Leave hanging","Ortada bırakmak"],["Level playing field","Eşit şartlar"],["Life of party","Ortamın neşesi"],["Light at tunnel","Umut ışığı"],["Lip service","Sözde destek"],["Live wire","Enerjik tip"],["Lone wolf","Yalnız kurt"],["Long shot","Zor ihtimal"],["Lose marbles","Aklını kaçırmak"],["Lose shirt","Her şeyi kaybetmek"],["Low hanging fruit","Kolay kazanç"],["Lucky break","Şans eseri"],["Make waves","Ortalığı karıştırmak"],["Man of word","Sözünün eri"],["Mean business","Ciddi olmak"],["Midas touch","Altın dokunuş"],["Nip in the bud","Başında ezmek"],["Not on my watch","Benim gözetimimde değil"],["Once in a blue moon","Çok nadiren"],["Open a can of worms","Başını belaya sokmak"],["Over the top","Abartılı"],["Penny for thoughts","Ne düşünüyorsun"],["Quick on the trigger","Eli çabuk"],["Rain cats and dogs","Bardaktan boşalırcasına"],["Reading tea leaves","Geleceği okumak"],["Salt of the earth","Dürüst insan"],["Show true colors","Asıl yüzünü göstermek"],["Speak in riddles","Bulmacalı konuşmak"],["Take the biscuit","Bu kadarı da fazla"],["Upset the apple cart","Planları bozmak"],["Vanish into thin air","Sırra kadem basmak"],["Wait for the dust to settle","Ortalığın yatışmasını beklemek"],["Water under the bridge","Geçmiş geçmişte kaldı"],["X marks the spot","Tam burası"],["You can't judge a book","Dışına bakıp yargılama"],["Zest for life","Hayat enerjisi"]
+];
+
+const db = rawData.map(i => ({en: i[0], tr: i[1]}));
+const pools = {
+    easy: db.slice(0, 110), normal: db.slice(110, 220),
+    hard: db.slice(220, 330), expert: db.slice(330, 440),
+    impossible: db.slice(440, 550)
+};
+
+// --- OYUN DURUMU ---
+let score = 0, currentRound = 1, currentPool = [], matches = 0, target = 5;
+let selE = null, selT = null, timer = null, timeRemaining = 0;
+let knownIdioms = JSON.parse(localStorage.getItem('knownIdioms')) || [];
+let bestScore = localStorage.getItem('bestScore') || 0;
+
+document.getElementById('best-score').innerText = bestScore;
+
+// --- FONKSİYONLAR ---
+function speak(t) {
+    const s = new SpeechSynthesisUtterance(t);
+    s.lang = 'en-US'; s.rate = 0.9;
+    window.speechSynthesis.speak(s);
+}
+
+function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function startGame(diff) {
+    score = 0; currentRound = 1; currentPool = shuffle([...pools[diff]]);
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('game').style.display = 'flex';
+    document.getElementById('score-val').innerText = score;
+    initRound();
+}
+
+function initRound() {
+    matches = 0; selE = null; selT = null;
+    document.getElementById('next-btn').style.display = 'none';
+    document.getElementById('round-val').innerText = currentRound;
+    
+    clearInterval(timer);
+    timeRemaining = 25;
+    timer = setInterval(() => {
+        timeRemaining -= 0.1;
+        document.getElementById('timer-fill').style.width = (timeRemaining/25*100) + "%";
+        if(timeRemaining <= 0) { clearInterval(timer); gameOver("SÜRE BİTTİ!"); }
+    }, 100);
+
+    renderBoard();
+}
+
+function renderBoard() {
+    const area = document.getElementById('game-area');
+    area.innerHTML = "";
+    const container = document.createElement('div'); container.className = 'quiz-container';
+    const colE = document.createElement('div'); colE.className = 'column';
+    const colT = document.createElement('div'); colT.className = 'column';
+
+    let roundItems = currentPool.slice((currentRound-1)*target, (currentRound-1)*target + target);
+    
+    // Karıştırma Garantisi (Yan yana gelmeyi engeller)
+    let engItems = shuffle([...roundItems]);
+    let trItems = shuffle([...roundItems]);
+    while(engItems.some((item, idx) => item.tr === trItems[idx].tr)) {
+        trItems = shuffle(trItems);
+    }
+
+    engItems.forEach(i => {
+        const b = document.createElement('button'); b.className = 'btn';
+        b.innerHTML = `<span>${i.en}</span> <small onclick="event.stopPropagation(); speak('${i.en}')">🔊</small>`;
+        b.onclick = () => { if(selE) selE.classList.remove('selected'); selE = b; b.classList.add('selected'); checkMatch(); };
+        colE.appendChild(b);
+    });
+
+    trItems.forEach(i => {
+        const b = document.createElement('button'); b.className = 'btn'; b.innerText = i.tr;
+        b.onclick = () => { if(selT) selT.classList.remove('selected'); selT = b; b.classList.add('selected'); checkMatch(); };
+        colT.appendChild(b);
+    });
+
+    container.append(colE, colT); area.appendChild(container);
+}
+
+function checkMatch() {
+    if(selE && selT) {
+        const enVal = selE.querySelector('span').innerText;
+        const correctTr = db.find(x => x.en === enVal).tr;
+
+        if(selT.innerText === correctTr) {
+            score += 20;
+            selE.className = 'btn correct'; selT.className = 'btn correct';
+            selE.disabled = true; selT.disabled = true;
+            if(!knownIdioms.includes(enVal)) {
+                knownIdioms.push(enVal);
+                localStorage.setItem('knownIdioms', JSON.stringify(knownIdioms));
+            }
+            matches++; selE = null; selT = null;
+            if(matches === target) {
+                clearInterval(timer);
+                document.getElementById('next-btn').style.display = 'block';
+            }
+        } else {
+            score = Math.max(0, score - 5);
+            document.getElementById('main-card').classList.add('shake');
+            setTimeout(() => document.getElementById('main-card').classList.remove('shake'), 300);
+            let e = selE, t = selT; e.className = 'btn wrong'; t.className = 'btn wrong';
+            setTimeout(() => { e.className = 'btn'; t.className = 'btn'; e.classList.remove('selected'); t.classList.remove('selected'); }, 500);
+            selE = null; selT = null;
+        }
+        document.getElementById('score-val').innerText = score;
+    }
+}
+
+function useHint() {
+    if(score < 10) return;
+    score -= 10; document.getElementById('score-val').innerText = score;
+    const firstEnBtn = document.querySelector('.column:first-child .btn:not(:disabled)');
+    if(firstEnBtn) {
+        const correctTr = db.find(x => x.en === firstEnBtn.querySelector('span').innerText).tr;
+        const trBtns = Array.from(document.querySelectorAll('.column:last-child .btn:not(:disabled)'));
+        const targetTrBtn = trBtns.find(b => b.innerText === correctTr);
+        targetTrBtn.style.background = "#fff9c4";
+        setTimeout(() => targetTrBtn.style.background = "", 1000);
+    }
+}
+
+function nextStep() {
+    if(currentRound < 5) { currentRound++; initRound(); }
+    else { gameOver("TEBRİKLER! OYUN BİTTİ."); }
+}
+
+function gameOver(msg) {
+    clearInterval(timer);
+    
+    // FIREBASE SKOR KAYDETME (EKLEDİM)
+    let pIsmi = prompt("Skorun Dünya Sıralamasına Kaydedilsin mi? İsmini Yaz:") || "Anonim";
+    database.ref('skorlar').push({
+        isim: pIsmi,
+        puan: score,
+        tarih: Date.now()
+    });
+
+    if(score > bestScore) { localStorage.setItem('bestScore', score); }
+    
+    document.getElementById('game-area').innerHTML = `<h2 style="color:var(--accent)">${msg}</h2><h3>Skorun: ${score}</h3><button class="btn" onclick="location.reload()" style="background:black; color:white; width:200px; margin: 0 auto;">TEKRAR DENE</button>`;
+    document.getElementById('next-btn').style.display = 'none';
+    document.getElementById('hint-btn').style.display = 'none';
+}
+
+function toggleDictionary() {
+    const v = document.getElementById('dictionary-view');
+    v.style.display = (v.style.display === 'block') ? 'none' : 'block';
+    if(v.style.display === 'block') {
+        const list = document.getElementById('dict-list'); list.innerHTML = "";
+        const progress = (knownIdioms.length / 550) * 100;
+        document.getElementById('progress-fill').style.width = progress + "%";
+        document.getElementById('progress-text').innerText = `Öğrenilen: ${knownIdioms.length}/550`;
+        db.forEach(i => {
+            const row = document.createElement('div');
+            row.style.cssText = "display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee; font-size:0.9em;";
+            row.innerHTML = `<span>${knownIdioms.includes(i.en) ? '✅' : '⏳'} <b>${i.en}</b>: ${i.tr}</span><button class="speak-btn" onclick="speak('${i.en}')">🔊</button>`;
+            list.appendChild(row);
+        });
+    }
+}
+
+function toggleTheme() {
+    const isDark = document.body.style.backgroundColor === 'rgb(24, 25, 26)';
+    if(!isDark) { 
+        document.body.style.backgroundColor = '#18191a'; 
+        document.getElementById('main-card').style.backgroundColor = '#242526';
+        document.body.style.color = '#e4e6eb';
+    } else { 
+        document.body.style.backgroundColor = '#f4f7f6'; 
+        document.getElementById('main-card').style.backgroundColor = '#fff';
+        document.body.style.color = '#2d3436';
+    }
+}
+
+// Günün Deyimi (24 saatte bir)
+const today = new Date();
+const dIdx = (today.getFullYear() * 365 + today.getMonth() * 31 + today.getDate()) % 550;
+document.getElementById('day-en').innerText = db[dIdx].en;
+document.getElementById('day-tr').innerText = db[dIdx].tr;
+document.getElementById('day-speak').onclick = () => speak(db[dIdx].en);
+
+</script>
+</body>
+</html>
