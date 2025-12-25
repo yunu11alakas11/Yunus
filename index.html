@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Idiom Master: Dictionary & Logic Fix</title>
+    <style>
+        :root {
+            --bg: #ffffff; --card-bg: #f8f9fa; --text: #333; --border: #ddd; --accent: #2196F3;
+            --easy: #4CAF50; --normal: #2196F3; --hard: #FF9800; --multi: #f44336; --impossible: #000000;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; transition: 0.5s; overflow-x: hidden; }
+        .game-card { background: var(--card-bg); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; max-width: 850px; width: 100%; position: relative; min-height: 500px; transition: 0.5s; }
+        
+        #theme-btn { position: absolute; top: 15px; left: 15px; padding: 8px 12px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; z-index: 10; font-size: 0.8em; }
+        #dict-btn { position: absolute; top: 15px; right: 15px; padding: 8px 12px; background: #607d8b; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; z-index: 10; font-size: 0.8em; }
+
+        @keyframes screenShake { 0%, 100% { transform: translate(0, 0); } 10% { transform: translate(-8px, -8px); } 30% { transform: translate(8px, 8px); } 50% { transform: translate(-8px, 8px); } 70% { transform: translate(8px, -8px); } }
+        .shake-screen { animation: screenShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        
+        .combo-active { animation: glowText 0.5s ease-in-out infinite; color: #e91e63; font-size: 1.5em; font-weight: 900; }
+        @keyframes glowText { 0%, 100% { transform: scale(1); text-shadow: 0 0 5px red; } 50% { transform: scale(1.1); text-shadow: 0 0 20px red; } }
+
+        .btn { padding: 12px; border: 2px solid var(--border); border-radius: 10px; background: transparent; color: var(--text); cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-easy { border-color: var(--easy) !important; color: var(--easy); }
+        .btn-normal { border-color: var(--normal) !important; color: var(--normal); }
+        .btn-hard { border-color: var(--hard) !important; color: var(--hard); }
+        .btn-impossible { background: #000 !important; color: #ff0000 !important; border: 2px solid #ff0000 !important; }
+
+        .timer-bar { width: 100%; height: 15px; background: rgba(128,128,128,0.2); border-radius: 10px; overflow: hidden; margin-top: 10px; }
+        #timer-fill { width: 100%; height: 100%; background: var(--accent); transition: width 0.1s linear; }
+        .quiz-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .column { display: flex; flex-direction: column; gap: 10px; }
+        .selected { border-color: var(--accent) !important; background: rgba(33, 150, 243, 0.2) !important; }
+        .correct { background-color: var(--easy) !important; color: white !important; border:none !important; }
+        .wrong { background-color: #f44336 !important; color: white !important; border:none !important; }
+        
+        /* Sözlük Stili */
+        #dictionary-view { display: none; text-align: left; max-height: 400px; overflow-y: auto; margin-top: 20px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; }
+        .dict-item { border-bottom: 1px solid var(--border); padding: 8px 0; display: flex; justify-content: space-between; }
+        .dict-tag { font-size: 0.7em; padding: 2px 6px; border-radius: 4px; color: white; }
+
+        #mini-game-area { position: relative; width: 100%; height: 350px; border: 2px dashed #ccc; overflow: hidden; display: none; margin-top: 20px; background: rgba(128,128,128,0.1); border-radius: 15px; }
+        .catch-item { position: absolute; padding: 12px; cursor: pointer; border-radius: 10px; background: var(--accent); color: white; border: none; font-weight: bold; }
+        #action-btn, #menu-btn, .back-btn { background: var(--accent); color: white; border: none; padding: 15px; border-radius: 10px; cursor:pointer; font-weight: bold; margin-top: 15px; width: 100%; font-size: 1.1em; }
+    </style>
+</head>
+<body>
+
+<div class="game-card" id="main-card">
+    <button id="theme-btn" onclick="nextTheme()">🎨 Tema</button>
+    <button id="dict-btn" onclick="toggleDictionary()">📖 Sözlük</button>
+    
+    <div id="menu">
+        <h1 style="margin-top:50px;">IDIOM MASTER</h1>
+        <p>Sözlük eklendi ve oyun akışı düzeltildi!</p>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <button class="btn btn-easy" onclick="startGame('easy')">EASY MODE</button>
+            <button class="btn btn-normal" onclick="startGame('normal')">NORMAL MODE</button>
+            <button class="btn btn-hard" onclick="startGame('hard')">HARD MODE</button>
+            <button class="btn btn-impossible" onclick="startGame('impossible')">IMPOSSIBLE MODE</button>
+        </div>
+    </div>
+
+    <div id="dictionary-view">
+        <h2 style="text-align:center">A-Z Deyim Sözlüğü</h2>
+        <div id="dict-list"></div>
+        <button class="back-btn" onclick="toggleDictionary()">Ana Menüye Dön</button>
+    </div>
+
+    <div id="game" style="display:none;">
+        <div style="display:flex; justify-content: space-between; font-weight: bold; margin-top:30px;">
+            <span id="round-display">Round: 1/5</span>
+            <span id="score-display">Puan: 0</span>
+        </div>
+        <div id="combo-text" style="height: 40px;"></div>
+        <div id="timer-ui"><div class="timer-bar"><div id="timer-fill"></div></div><div id="time-text">Süre: --</div></div>
+        <hr><div id="game-area"></div>
+        <div id="mini-game-area"></div>
+        <button id="action-btn" style="display:none;" onclick="initLightningQuiz()">Yıldırım Quiz! ⚡</button>
+        <button id="menu-btn" style="display:none; background:#555;" onclick="location.reload()">Ana Menü</button>
+    </div>
+</div>
+
+<script>
+    const themes = [
+        { bg: "#ffffff", card: "#f8f9fa", text: "#333", accent: "#2196F3", easy: "#4CAF50", normal: "#2196F3", hard: "#FF9800" },
+        { bg: "#1a1a1a", card: "#2d2d2d", text: "#f0f0f0", accent: "#bb86fc", easy: "#03dac6", normal: "#bb86fc", hard: "#cf6679" },
+        { bg: "#0f172a", card: "#1e293b", text: "#f8fafc", accent: "#38bdf8", easy: "#4ade80", normal: "#38bdf8", hard: "#fbbf24" },
+        { bg: "#2c003e", card: "#512b58", text: "#feadb9", accent: "#feadb9", easy: "#feadb9", normal: "#feadb9", hard: "#feadb9" },
+        { bg: "#121212", card: "#1e1e1e", text: "#39FF14", accent: "#39FF14", easy: "#39FF14", normal: "#39FF14", hard: "#39FF14" }
+    ];
+
+    let currentThemeIdx = 0;
+    function nextTheme() {
+        currentThemeIdx = (currentThemeIdx + 1) % themes.length;
+        const t = themes[currentThemeIdx];
+        const r = document.documentElement.style;
+        r.setProperty('--bg', t.bg); r.setProperty('--card-bg', t.card);
+        r.setProperty('--text', t.text); r.setProperty('--accent', t.accent);
+        r.setProperty('--easy', t.easy); r.setProperty('--normal', t.normal);
+        r.setProperty('--hard', t.hard);
+    }
+
+    const pools = {
+        easy: [
+            {en: "Piece of cake", tr: "Çocuk oyuncağı"}, {en: "Time flies", tr: "Zaman uçar"}, {en: "Break a leg", tr: "Başarılar dilerim"},
+            {en: "Don't worry", tr: "Endişelenme"}, {en: "Hold on", tr: "Bekle"}, {en: "Good job", tr: "İyi iş"},
+            {en: "Slow down", tr: "Yavaşla"}, {en: "Be careful", tr: "Dikkat et"}, {en: "I agree", tr: "Katılıyorum"},
+            {en: "Follow me", tr: "Beni takip et"}, {en: "Let's go", tr: "Haydi gidelim"}, {en: "No problem", tr: "Sorun değil"},
+            {en: "Keep it up", tr: "Aynen devam et"}, {en: "Easy come, easy go", tr: "Haydan gelen huya gider"}, {en: "See you", tr: "Görüşürüz"}
+        ],
+        normal: [
+            {en: "Better late than never", tr: "Geç olsun güç olmasın"}, {en: "Think twice", tr: "İki kez düşün"}, {en: "Look out", tr: "Dikkatli ol"},
+            {en: "So far so good", tr: "Şimdilik her şey yolunda"}, {en: "Take it easy", tr: "Sakin ol"}, {en: "Never mind", tr: "Boşver"},
+            {en: "By the way", tr: "Bu arada"}, {en: "Waste of time", tr: "Zaman kaybı"}, {en: "What's up", tr: "Naber"},
+            {en: "Under control", tr: "Kontrol altında"}, {en: "Make up your mind", tr: "Kararını ver"}, {en: "On the way", tr: "Yolda"},
+            {en: "Call me back", tr: "Beni geri ara"}, {en: "Believe me", tr: "Bana inan"}, {en: "As soon as possible", tr: "Mümkün olan en kısa sürede"}
+        ],
+        hard: [
+            {en: "Under the weather", tr: "Halsiz hissetmek"}, {en: "Bite the bullet", tr: "Dişini sıkmak"}, {en: "Once in a blue moon", tr: "Kırk yılda bir"},
+            {en: "Cold feet", tr: "Gözü korkmak"}, {en: "Spill the beans", tr: "Sırrı ifşa etmek"}, {en: "Hit the sack", tr: "Yatıp uyumak"},
+            {en: "On the ball", tr: "Uyanık ve tetikte olmak"}, {en: "Break the ice", tr: "Buzları eritmek"}, {en: "Costs an arm and a leg", tr: "Çok pahalı olmak"},
+            {en: "Burn the midnight oil", tr: "Gece geç saatlere kadar çalışmak"}, {en: "Let the cat out of the bag", tr: "Ağzından baklayı çıkarmak"}, {en: "Miss the boat", tr: "Fırsatı kaçırmak"},
+            {en: "No pain, no gain", tr: "Emek olmadan yemek olmaz"}, {en: "The last straw", tr: "Bardağı taşıran son damla"}, {en: "Cut corners", tr: "İşi ucuza/kolaya kaçarak yapmak"}
+        ],
+        impossible: [
+            {en: "Beat around the bush", tr: "Lafı dolandırmak"}, {en: "Barking up the wrong tree", tr: "Yanlış kapıyı çalmak"}, {en: "A blessing in disguise", tr: "Her şer de bir hayır vardır"},
+            {en: "Through thick and thin", tr: "İyi günde kötü günde"}, {en: "Curiosity killed the cat", tr: "Fazla merak iyi değildir"}, {en: "Kill two birds with one stone", tr: "Bir taşla iki kuş vurmak"},
+            {en: "Speak of the devil", tr: "İyi insan lafın üstüne gelir"}, {en: "Your guess is as good as mine", tr: "Ben de senin kadar biliyorum"}, {en: "Elephant in the room", tr: "Görmezden gelinen büyük sorun"},
+            {en: "The best of both worlds", tr: "Bir taşla iki kuş (her iki tarafın avantajı)"}, {en: "Cry wolf", tr: "Yalancı çobanlık yapmak"}, {en: "Get out of hand", tr: "Kontrolden çıkmak"},
+            {en: "Wrap your head around something", tr: "Bir şeyi anlamaya çalışmak"}, {en: "A dime a dozen", tr: "Pek çok bulunan, sıradan"}, {en: "Pull someone's leg", tr: "Biriyle dalga geçmek"}
+        ]
+    };
+
+    let score = 0, timeLeft = 0, initialTime = 0, timerInterval, round = 1, matchesFound = 0, targetMatches = 0, currentDiff = '', combo = 0, selectedEng = null, selectedTr = null;
+    let currentSessionPool = [];
+
+    function toggleDictionary() {
+        const menu = document.getElementById('menu');
+        const dictView = document.getElementById('dictionary-view');
+        if (dictView.style.display === 'block') {
+            dictView.style.display = 'none';
+            menu.style.display = 'block';
+        } else {
+            menu.style.display = 'none';
+            dictView.style.display = 'block';
+            showDictionary();
+        }
+    }
+
+    function showDictionary() {
+        const list = document.getElementById('dict-list');
+        list.innerHTML = "";
+        let allItems = [];
+        for (let level in pools) {
+            pools[level].forEach(item => allItems.push({...item, level: level}));
+        }
+        allItems.sort((a, b) => a.en.localeCompare(b.en));
+        
+        allItems.forEach(item => {
+            const div = document.createElement('div');
+            div.className = "dict-item";
+            div.innerHTML = `<span><strong>${item.en}</strong>: ${item.tr}</span> 
+                             <span class="dict-tag" style="background:var(--${item.level})">${item.level.toUpperCase()}</span>`;
+            list.appendChild(div);
+        });
+    }
+
+    function startGame(diff) {
+        currentDiff = diff;
+        round = 1;
+        score = 0;
+        currentSessionPool = [...pools[diff]].sort(() => Math.random() - 0.5);
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('game').style.display = 'block';
+        document.getElementById('dict-btn').style.display = 'none';
+        resetRound(true);
+    }
+
+    function resetRound(firstStart = false) {
+        matchesFound = 0; selectedEng = null; selectedTr = null;
+        document.getElementById('action-btn').style.display = 'none';
+        document.getElementById('round-display').innerText = `Round: ${round}/5`;
+        targetMatches = (currentDiff === 'easy' || currentDiff === 'normal') ? 3 : 4;
+        
+        if(currentDiff !== 'easy') {
+            document.getElementById('timer-ui').style.display = 'block';
+            initialTime = (currentDiff === 'normal' ? 30 : (currentDiff === 'impossible' ? 15 : 25));
+            timeLeft = initialTime;
+            if(firstStart) startTimer();
+        } else { document.getElementById('timer-ui').style.display = 'none'; }
+        initMatchStage();
+    }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft -= 0.1;
+            document.getElementById('timer-fill').style.width = (timeLeft/initialTime*100) + "%";
+            document.getElementById('time-text').innerText = `Süre: ${Math.ceil(timeLeft)}s`;
+            if(timeLeft <= 0) { 
+                clearInterval(timerInterval); 
+                document.getElementById('game-area').innerHTML = "<h1 style='color:red'>SÜRE BİTTİ!</h1>";
+                document.getElementById('menu-btn').style.display = "block";
+            }
+        }, 100);
+    }
+
+    function initMatchStage() {
+        const area = document.getElementById('game-area'); area.innerHTML = '<h3>İngilizce Deyim → Türkçe Anlam</h3>';
+        const cont = document.createElement('div'); cont.className = 'quiz-container';
+        const col1 = document.createElement('div'); const col2 = document.createElement('div');
+        col1.className = 'column'; col2.className = 'column';
+        
+        let roundItems = currentSessionPool.slice((round-1)*targetMatches, round*targetMatches);
+        
+        // Sol Sütun: İngilizce Deyimler
+        roundItems.forEach(i => {
+            const b = document.createElement('button'); b.className = 'btn btn-' + currentDiff; b.innerText = i.en;
+            b.onclick = () => { if(selectedEng) selectedEng.classList.remove('selected'); selectedEng = b; b.classList.add('selected'); checkMatch(); };
+            col1.appendChild(b);
+        });
+        
+        // Sağ Sütun: Türkçe Anlamlar (Karıştırılmış)
+        [...roundItems].sort(() => Math.random() - 0.5).forEach(i => {
+            const b = document.createElement('button'); b.className = 'btn btn-' + currentDiff; b.innerText = i.tr;
+            b.onclick = () => { if(selectedTr) selectedTr.classList.remove('selected'); selectedTr = b; b.classList.add('selected'); checkMatch(); };
+            col2.appendChild(b);
+        });
+        
+        cont.append(col1, col2); area.appendChild(cont);
+    }
+
+    function checkMatch() {
+        if(selectedEng && selectedTr) {
+            const allItems = Object.values(pools).flat();
+            const isCorrect = allItems.some(i => i.en === selectedEng.innerText && i.tr === selectedTr.innerText);
+            
+            if(isCorrect) {
+                combo++; score += (20 * combo);
+                selectedEng.className = 'btn correct'; selectedTr.className = 'btn correct';
+                selectedEng.disabled = true; selectedTr.disabled = true;
+                if(combo >= 2) { 
+                    const ct = document.getElementById('combo-text'); 
+                    ct.innerText = "COMBO x" + combo; ct.className = "combo-active"; 
+                }
+                matchesFound++; selectedEng = null; selectedTr = null;
+                if(matchesFound === targetMatches) document.getElementById('action-btn').style.display = 'block';
+            } else { 
+                combo = 0; document.getElementById('combo-text').innerText = "";
+                document.getElementById('main-card').classList.add('shake-screen');
+                setTimeout(() => document.getElementById('main-card').classList.remove('shake-screen'), 400);
+                let tEng = selectedEng; let tTr = selectedTr;
+                tEng.className = 'btn wrong'; tTr.className = 'btn wrong';
+                setTimeout(() => { tEng.className = 'btn btn-'+currentDiff; tTr.className = 'btn btn-'+currentDiff; }, 500);
+                selectedEng = null; selectedTr = null;
+            }
+            document.getElementById('score-display').innerText = `Puan: ${score}`;
+        }
+    }
+
+    function initLightningQuiz() {
+        document.getElementById('action-btn').style.display = 'none';
+        document.getElementById('timer-ui').style.display = 'block';
+        initialTime = 5; timeLeft = 5; startTimer();
+        const area = document.getElementById('game-area');
+        const all = Object.values(pools).flat();
+        const correct = all[Math.floor(Math.random()*all.length)];
+        
+        area.innerHTML = `<h3 style="color:var(--accent);">HIZLI CEVAP! "${correct.en}" açıklaması nedir?</h3>`;
+        let opts = [correct.tr]; 
+        while(opts.length < 4) { 
+            let r = all[Math.floor(Math.random()*all.length)].tr; 
+            if(!opts.includes(r)) opts.push(r); 
+        }
+        
+        opts.sort(() => Math.random() - 0.5).forEach(opt => {
+            const b = document.createElement('button'); b.className = 'btn btn-' + currentDiff; b.style.display="block"; b.style.width="100%"; b.style.margin="8px 0"; b.innerText = opt;
+            b.onclick = () => { 
+                if(opt === correct.tr) { 
+                    score += 50; 
+                    if(round < 5) { round++; resetRound(); } else { startMiniGame(); } 
+                } else { finishGame(); } 
+            };
+            area.appendChild(b);
+        });
+    }
+
+    function startMiniGame() {
+        clearInterval(timerInterval);
+        document.getElementById('timer-ui').style.display = 'none';
+        document.getElementById('game-area').innerHTML = "<h3>FINAL MINI-GAME: YAKALA!</h3>";
+        const miniArea = document.getElementById('mini-game-area'); miniArea.style.display = "block";
+        let miniTime = 10;
+        const mInterval = setInterval(() => {
+            miniTime -= 1;
+            if(miniTime <= 0) { clearInterval(mInterval); finishGame(); }
+            const b = document.createElement('button'); b.className = "catch-item"; b.innerText = "YAKALA!";
+            b.style.left = Math.random() * 80 + "%"; b.style.top = Math.random() * 80 + "%";
+            b.onclick = () => { score += 25; b.remove(); document.getElementById('score-display').innerText = `Puan: ${score}`; };
+            miniArea.appendChild(b); setTimeout(() => { if(b) b.remove(); }, 800);
+        }, 600);
+    }
+
+    function finishGame() {
+        clearInterval(timerInterval); 
+        document.getElementById('mini-game-area').style.display = "none";
+        document.getElementById('game-area').innerHTML = `<h2>OYUN BİTTİ!</h2><h3>Toplam Puanın: ${score}</h3>`;
+        document.getElementById('menu-btn').style.display = 'block';
+    }
+</script>
+</body>
+</html>
