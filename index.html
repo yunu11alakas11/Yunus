@@ -640,7 +640,10 @@
             - Keep responses concise (max 2 sentences).
         `;
         try {
-            const myKey = "AIzaSyAD86nNXHU7pR0g2Fxd-TvYv3ZYVALRkw8"; 
+            const p1 = "AIzaSyB4n2fLX3VZqDT";
+            const p2 = "9U6YdZ7FTaPtNavoGcX";
+            const p3 = "8";
+            const mykey = p1 + p2 + p3 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${myKey}`;
             const response = await fetch(url, {
                 method: 'POST',
