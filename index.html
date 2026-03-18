@@ -74,7 +74,11 @@
             <div id="leaderboard-list">Loading...</div>
         </div>
     </div>
-
+<div id="deyim-panosu" style="background: white; border: 2px solid #3498db; border-radius: 12px; padding: 10px; margin-top: 15px; text-align: center;">
+    <h4 style="margin: 0; color: #3498db; font-size: 0.8rem;">🌟 GÜNÜN DEYİMİ</h4>
+    <p id="en-metin" style="font-size: 1.1rem; font-weight: bold; margin: 5px 0; color: #2c3e50;"></p>
+    <p id="tr-metin" style="font-size: 0.9rem; color: #7f8c8d; font-style: italic; margin: 0;"></p>
+</div>
     <div id="game-screen">
         <div class="timer-container"><div id="timer-bar"></div></div>
         <h2 id="lvl-title" style="color:#2980b9; margin-bottom: 5px;"></h2>
@@ -816,6 +820,134 @@
     document.querySelectorAll('.lvl-btn').forEach(btn => {
         btn.onclick = () => startGame(btn.getAttribute('data-lvl'));
     });
+    // script.js'in EN SONUNA ekle:
+
+// --- TÜM DEYİMLER HAVUZU (Sadece İngilizce) ---
+const tumDeyimler = [
+    // SET 1 (İlk 110)
+    "Piece of cake", "Break a leg", "Under the weather", "Better late than never", "Call it a day",
+    "Easy does it", "No pain, no gain", "So far so good", "Time flies", "Speak of the devil",
+    "Break the ice", "As quick as a flash", "A hot potato", "Out of the blue", "To make a long story short",
+    "Beat around the bush", "Hit the sack", "Blessing in disguise", "Cry over spilt milk", "Cold shoulder",
+    "The best of both worlds", "Once in a blue moon", "Bite off more than you can chew", "Don't judge a book by its cover",
+    "Keep your chin up", "Let the cat out of the bag", "The last straw", "Get out of hand", "Pull yourself together",
+    "Barking up the wrong tree", "Go the extra mile", "Step up your game", "Back to the drawing board", "Burn the midnight oil",
+    "Cut to the chase", "Hit the nail on the head", "Ignorance is bliss", "It takes two to tango", "Keep something at bay",
+    "Kill two birds with one stone", "On the ball", "Rain on someone's parade", "Save for a rainy day", "Slow and steady wins the race",
+    "Spill the beans", "Take it with a grain of salt", "Elephant in the room", "Through thick and thin", "To sit on the fence",
+    "Under your nose", "When pigs fly", "Action speaks louder than words", "Add insult to injury", "Piece of the puzzle",
+    "A drop in the bucket", "Apple of my eye", "Around the clock", "At the end of the day", "Big picture",
+    "Bird's eye view", "Break the bank", "By all means", "Change of heart", "Check something out",
+    "Clean slate", "Come in handy", "Count on someone", "Cross your fingers", "Cut corners",
+    "Day in and day out", "Down to earth", "Draw the line", "Drop someone a line", "Fair and square",
+    "Feel like a million dollars", "Follow in someone's footsteps", "Get a grip", "Get to the point", "Give it a shot",
+    "Go with the flow", "Hang in there", "Hold your horses", "In the long run", "Keep an eye on",
+    "Keep in touch", "Know something by heart", "Learn the ropes", "Let it go", "Long story short",
+    "Lose track of time", "Make up your mind", "Miss the boat", "Music to my ears", "Next to nothing",
+    "No big deal", "Off the hook", "On cloud nine", "Out of order", "Out of this world",
+    "Over the moon", "Piece of mind", "Play it by ear", "Put yourself in someone's shoes", "Ring a bell",
+    "Run out of time", "Safe and sound", "See eye to eye", "Sleep on it", "Work like a charm",
+
+    // SET 2 (111 - 220)
+    "Back against the wall", "Bark is worse than his bite", "Burn bridges", "Calm before the storm", "Caught red-handed",
+    "Cut to the bone", "Diamond in the rough", "Don't count your chickens", "Every cloud has a silver lining", "Fish out of water",
+    "Fit as a fiddle", "From scratch", "Get wind of something", "Go down in flames", "Hear it on the grapevine",
+    "Hit the ceiling", "In a nutshell", "In the heat of the moment", "Keep your fingers crossed", "Last resort",
+    "Let sleeping dogs lie", "Method to the madness", "No strings attached", "On the fence", "Out of the woods",
+    "Over the top", "Piece of work", "Pull someone's leg", "Read between the lines", "Rule of thumb",
+    "Shot in the dark", "Skeleton in the closet", "Spill the tea", "Steal someone's thunder", "The ball is in your court",
+    "The tip of the iceberg", "Throw in the towel", "Under the radar", "Up in the air", "Water under the bridge",
+    "Wild goose chase", "Your guess is as good as mine", "A penny for your thoughts", "Bite the bullet", "Cold feet",
+    "Couch potato", "Face the music", "High five", "Hold your tongue", "Better safe than sorry",
+    "Chew the fat", "Chip on your shoulder", "Close but no cigar", "Come rain or shine", "Cut someone some slack",
+    "Don't put all eggs in one basket", "Drastic times call for drastic measures", "Every dog has its day", "Get a taste of your own medicine",
+    "Give someone the benefit of the doubt", "It's not rocket science", "Jump on the bandwagon", "Last straw", "Play devil's advocate",
+    "Rock the boat", "The whole nine yards", "To stab someone in the back", "We'll cross that bridge when we come to it", "You can say that again",
+
+    // SET 3 (Yeni - 550 Hedefine Devam)
+    "Beating around the bush", "Bed of roses", "Bite the dust", "Bury the hatchet", "By and large",
+    "Cast pearls before swine", "Chew the cud", "Cold comfort", "Dark horse", "Dead as a doornail",
+    "Dog in the manger", "Dutch courage", "Feather in your cap", "Flog a dead horse", "Fly in the ointment",
+    "Full of beans", "Gird up your loins", "Go against the grain", "Go the whole hog", "Graveyard shift",
+    "Hale and hearty", "Hard nut to crack", "Haul over the coals", "Heads will roll", "In the doldrums",
+    "It's all Greek to me", "Keep at arm's length", "Kicking the bucket", "Lion's share", "Live from hand to mouth",
+    "Mad as a hatter", "Make no bones about it", "Minding your Ps and Qs", "Never-never land", "Not my cup of tea",
+    "Off the beaten track", "On the warpath", "Over the hill", "Pass the buck", "Pie in the sky",
+    "Red herring", "Read the riot act", "Ride shotgun", "Rule the roost", "Run the gauntlet",
+    "Salt of the earth", "Saved by the bell", "Scrape the barrel", "Sell down the river", "Shotgun wedding",
+    "Sitting duck", "Skeleton staff", "Sleep like a log", "Sling mud", "Small fry",
+    "Spanner in the works", "Steer clear of", "Stiff upper lip", "Storm in a teacup", "Talking through your hat",
+    "The apple of discord", "The icing on the cake", "The midas touch", "Through the grapevine", "Throw caution to the wind",
+    "To bell the cat", "To blow your own trumpet", "To buy a pig in a poke", "To carry coals to Newcastle", "To eat humble pie",
+    "To feather your own nest", "To grease someone's palm", "To pay through the nose", "Under the thumb", "Until the cows come home",
+    "Upset the apple cart", "Wear your heart on your sleeve", "Wet behind the ears", "Whistle in the dark", "Whistle-stop tour",
+    "White elephant", "Wild and woolly", "Worth your salt", "Yellow-bellied", "You are what you eat", "Zero hour",
+    "Against all odds", "All brawn and no brain", "As cool as a cucumber", "Back on your feet"
+
+    // --- SET 4 (331 - 440) ---
+    "A bird in the hand is worth two in the bush", "A blessing in disguise", "A dime a dozen", "A leopard can't change its spots", "A penny saved is a penny earned", 
+    "A picture paints a thousand words", "A taste of your own medicine", "All in good time", "An arm and a leg", "At the drop of a hat", 
+    "Back to square one", "Beating a dead horse", "Between a rock and a hard place", "Burn the candle at both ends", "By the skin of your teeth", 
+    "Caught between two stools", "Cut the mustard", "Don't give up your day job", "Familiarity breeds contempt", "He has bigger fish to fry", 
+    "Leave no stone unturned", "Look before you leap", "Method to my madness", "Not a spark of decency", "Off the top of my head", 
+    "Shed light on something", "Skeleton in the closet", "Straight from the horse's mouth", "Time is money", "A bolt from the blue", 
+    "By hook or by crook", "Call a spade a spade", "Every cloud has a silver lining", "Out of the frying pan into the fire", "Patience is a virtue", 
+    "Prevention is better than cure", "Strike while the iron is hot", "The end justifies the means", "Too many cooks spoil the broth", "A chain is only as strong as its weakest link", 
+    "A fool and his money are soon parted", "A journey of a thousand miles begins with a single step", "A man is known by the company he keeps", "A soft answer turns away wrath", "All is fair in love and war", 
+    "All work and no play makes Jack a dull boy", "As you sow, so shall you reap", "Barking dogs seldom bite", "Beauty is skin deep", "Clothes do not make the man", 
+    "Cowards die many times before their deaths", "Diamonds cut diamonds", "Discretion is the better part of valor", "Empty vessels make the most noise", "Every man is the architect of his own fortune", 
+    "Faint heart never won fair lady", "Fine words butter no parsnips", "God helps those who help themselves", "Great oaks from little acorns grow", "He who laughs last, laughs best", 
+    "History repeats itself", "Honesty is the best policy", "Hope for the best, prepare for the worst", "If wishes were horses, beggars would ride", "In for a penny, in for a pound", 
+    "It's never too late to mend", "Kill the goose that lays the golden eggs", "Knowledge is power", "Least said, soonest mended", "Let the punishment fit the crime", 
+    "Like cures like", "Love is blind", "Many hands make light work", "Might is right", "Misery loves company", 
+    "Necessity knows no law", "Never put off till tomorrow what you can do today", "No news is good news", "Nothing ventured, nothing gained", "One man's meat is another man's poison", 
+    "Penny wise and pound foolish", "Practice what you preach", "A sea change", "Achilles' heel", "All mouth and no trousers", 
+    "Armed to the teeth", "At loggerheads", "Back to the salt mines", "Bed of roses", "Bury the hatchet", 
+    "Cast pearls before swine", "Chew the cud", "Cold comfort", "Dark horse", "Dead as a doornail", 
+    "Dog in the manger", "Dutch courage", "Feather in your cap", "Flog a dead horse", "Fly in the ointment", 
+    "Full of beans", "Gird up your loins", "Go against the grain", "Go the whole hog", "Graveyard shift", 
+    "Hale and hearty", "Hard nut to crack", "Haul over the coals", "Heads will roll", "In the doldrums"
+
+    // --- SET 5 (441 - 550) ---
+    "It's all Greek to me", "Keep at arm's length", "Kicking the bucket", "Lion's share", "Live from hand to mouth",
+    "Mad as a hatter", "Make no bones about it", "Minding your Ps and Qs", "Never-never land", "Not my cup of tea",
+    "Off the beaten track", "On the warpath", "Over the hill", "Pass the buck", "Pie in the sky",
+    "Red herring", "Read the riot act", "Ride shotgun", "Rule the roost", "Run the gauntlet",
+    "Salt of the earth", "Saved by the bell", "Scrape the barrel", "Sell down the river", "Shotgun wedding",
+    "Sitting duck", "Skeleton staff", "Sleep like a log", "Sling mud", "Small fry",
+    "Spanner in the works", "Steer clear of", "Stiff upper lip", "Storm in a teacup", "Talking through your hat",
+    "The apple of discord", "The icing on the cake", "The midas touch", "Through the grapevine", "Throw caution to the wind",
+    "To bell the cat", "To blow your own trumpet", "To buy a pig in a poke", "To carry coals to Newcastle", "To eat humble pie",
+    "To feather your own nest", "To grease someone's palm", "To pay through the nose", "Under the thumb", "Until the cows come home",
+    "Upset the apple cart", "Wear your heart on your sleeve", "Wet behind the ears", "Whistle in the dark", "Whistle-stop tour",
+    "White elephant", "Wild and woolly", "Worth your salt", "Yellow-bellied", "You are what you eat", 
+    "Zero hour", "Against all odds", "All brawn and no brain", "As cool as a cucumber", "Back on your feet",
+    "Barking up the wrong tree", "Beating a dead horse", "Beggars can't be choosers", "Better safe than sorry", "Between a rock and a hard place",
+    "Bite the bullet", "Break the ice", "Burn bridges", "By the book", "Call it a day",
+    "Change of heart", "Chicken out", "Close but no cigar", "Cold feet", "Couch potato",
+    "Cut corners", "Cut to the chase", "Draw the line", "Drive someone up the wall", "Easy does it",
+    "Face the music", "Fair and square", "Fish out of water", "From scratch", "Get a grip",
+    "Get out of hand", "Get the hang of it", "Give it a shot", "Go the extra mile", "Hang in there",
+    "Hit the books", "Hit the sack", "In a nutshell", "In the long run", "Keep an eye on",
+    "Keep in touch", "Last resort", "Let it go", "Lose track of time", "Make up your mind",
+    "Miss the boat", "No big deal", "Off the hook", "On cloud nine", "On the ball"
+];
+
+// --- SEÇİCİ FONKSİYON ---
+function gununDeyiminiYukle() {
+    // Listeden rastgele bir tane seçiyoruz
+    const rastgeleIndeks = Math.floor(Math.random() * tumDeyimler.length);
+    const secilen = tumDeyimler[rastgeleIndeks];
+
+    // HTML'deki kutuya yazıyoruz (ID'si en-metin olmalı)
+    const pano = document.getElementById('en-metin');
+    if (pano) {
+        pano.innerText = secilen;
+    }
+}
+
+// Sayfa her yüklendiğinde (yenilendiğinde) otomatik çalıştır
+window.addEventListener('load', gununDeyiminiYukle);
 </script>
 </body>
 </html>
