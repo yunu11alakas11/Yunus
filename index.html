@@ -1,0 +1,821 @@
+
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dolphin Idiom Master</title>
+    <style>
+        body { font-family: sans-serif; background-color: #ffffff; text-align: center; margin: 0; padding: 20px; color: #2c3e50; }
+        .dict-btn { background-color: #2980b9; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; position: absolute; top: 20px; left: 20px; }
+        .logo-area { margin-top: 50px; }
+        .logo-img { width: 180px; height: 180px; border-radius: 50%; border: 4px solid #002d5b; object-fit: cover; }
+        h1 { color: #2980b9; margin-top: 15px; font-size: 2.2rem; }
+        .name-box { border: 2px solid #2980b9; border-radius: 8px; padding: 10px; width: 300px; margin: 15px auto; font-size: 1.2rem; color: #2c3e50; font-weight: bold; }
+        .question-area { margin: 20px 0; }
+        #ai-question { padding: 12px; border-radius: 8px; border: 1px solid #2980b9; width: 280px; font-size: 1rem; }
+        .ask-btn { background-color: #3498db; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+        #ai-bubble { display: none; background: #f8f9fa; border: 2px solid #2980b9; padding: 15px; border-radius: 15px; width: 300px; margin: 15px auto; font-weight: bold; }
+        
+        .level-list { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 30px; }
+        .lvl-btn { width: 450px; padding: 20px; border: none; border-radius: 15px; color: white; font-weight: bold; font-size: 1.3rem; cursor: pointer; }
+        .easy { background-color: #2ecc71; } .normal { background-color: #3498db; } .hard { background-color: #f1c40f; } .multihard { background-color: #e67e22; } .impossible { background-color: #e74c3c; }
+        
+        .leaderboard-area { margin-top: 40px; background: #f1f4f9; padding: 20px; border-radius: 15px; max-width: 500px; margin-left: auto; margin-right: auto; border: 1px solid #ddd; }
+        
+        #game-screen { display: none; }
+        .timer-container { width: 450px; height: 15px; background: #eee; border-radius: 10px; margin: 20px auto; overflow: hidden; border: 1px solid #ccc; }
+        #timer-bar { width: 100%; height: 100%; background: #e74c3c; transition: width 0.1s linear; }
+        .match-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 800px; margin: 20px auto; }
+        .card { padding: 20px; border: 2px solid #ddd; border-radius: 12px; cursor: pointer; background: white; font-weight: bold; min-height: 60px; display: flex; align-items: center; justify-content: center; }
+        .selected { background: #d1ecf1; border-color: #2980b9; }
+        .correct { background-color: #2ecc71 !important; color: white; cursor: default; }
+        .wrong { background-color: #e74c3c !important; color: white; }
+
+        #dict-modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); }
+        .dict-content { background-color: white; margin: 5% auto; padding: 20px; border-radius: 15px; width: 80%; max-height: 80vh; overflow-y: auto; text-align: left; }
+        .dict-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2980b9; margin-bottom: 15px; padding-bottom: 10px; }
+        .idiom-item { padding: 8px; border-bottom: 1px solid #eee; font-size: 1.1rem; }
+        .idiom-item b { color: #2980b9; }
+    </style>
+</head>
+<body>
+    <div id="dict-modal">
+        <div class="dict-content">
+            <div class="dict-header">
+                <h2 style="color: #2980b9; margin: 0;">A-Z Idioms Dictionary</h2>
+                <button onclick="closeDictionary()" style="background:#e74c3c; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">Close</button>
+            </div>
+            <div id="dict-list"></div>
+        </div>
+    </div>
+
+    <div id="menu-screen">
+        <button class="dict-btn" onclick="openDictionary()">DICTIONARY</button>
+        <div class="logo-area">
+            <img src="dolphin-logo.jpeg" class="logo-img">
+            <h1>Dolphin AI</h1>
+            <input type="text" id="player-name-input" class="name-box" placeholder="Write your name..." style="text-align: center;">
+            <div class="question-area">
+                <input type="text" id="ai-question" placeholder="Ask AI...">
+                <button id="ask-ai-btn" class="ask-btn">ASK</button>
+            </div>
+            <div id="ai-bubble"></div>
+        </div>
+        <div class="level-list">
+            <button class="lvl-btn easy" data-lvl="easy">EASY</button>
+            <button class="lvl-btn normal" data-lvl="normal">NORMAL</button>
+            <button class="lvl-btn hard" data-lvl="hard">HARD</button>
+            <button class="lvl-btn multihard" data-lvl="multihard">MULTI HARD</button>
+            <button class="lvl-btn impossible" data-lvl="impossible">IMPOSSIBLE</button>
+        </div>
+        <div class="leaderboard-area">
+            <h3>🏆 Leaderboard</h3>
+            <div id="leaderboard-list">Loading...</div>
+        </div>
+    </div>
+
+    <div id="game-screen">
+        <div class="timer-container"><div id="timer-bar"></div></div>
+        <h2 id="lvl-title" style="color:#2980b9; margin-bottom: 5px;"></h2>
+        <div id="round-display" style="font-weight: bold; color: #34495e; margin-bottom: 10px; font-size: 1.2rem;">Round: 1 / 5</div>
+        <div class="match-grid" id="match-area"></div>
+        <div id="end-info" style="display:none; color:#2c3e50; font-weight:bold; margin-bottom:15px; font-size:1.2rem;"></div>
+        <button onclick="location.reload()" style="margin-top:20px; padding:10px; cursor:pointer; border-radius:8px;">BACK TO MENU</button>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyC1h5GomEegVsaxLW69WdpXAPi7jweSMiU",
+        authDomain: "idiom-master-73674.firebaseapp.com",
+        databaseURL: "https://idiom-master-73674-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "idiom-master-73674",
+        storageBucket: "idiom-master-73674.firebasestorage.app",
+        appId: "1:974516904552:web:8a5c17ff572241aa0611dd"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const idiomsData = {
+            easy: [
+                { en: "Piece of cake", tr: "Çocuk oyuncağı" }, { en: "Break a leg", tr: "İyi şanslar" }, { en: "Under the weather", tr: "Halsiz/Keyifsiz" }, { en: "Better late than never", tr: "Geç olsun güç olmasın" }, { en: "Call it a day", tr: "Paydos etmek" }, { en: "Easy does it", tr: "Acele etme" }, { en: "No pain, no gain", tr: "Emek olmadan yemek olmaz" }, { en: "So far so good", tr: "Her şey yolunda" }, { en: "Time flies", tr: "Zaman akıp gidiyor" }, { en: "Speak of the devil", tr: "İti an çomağı hazırla" }, { en: "Break the ice", tr: "Buzu eritmek" }, { en: "As quick as a flash", tr: "Kaşla göz arasında" }, { en: "A hot potato", tr: "Zor konu" }, { en: "Out of the blue", tr: "Aniden" }, { en: "To make a long story short", tr: "Sözün kısası" }, { en: "Beat around the bush", tr: "Lafı dolandırmak" }, { en: "Hit the sack", tr: "Kafayı vurup yatmak" }, { en: "Blessing in disguise", tr: "Her şer de bir hayır vardır" }, { en: "Cry over spilt milk", tr: "Olmuşla ölmüşe çare yok" }, { en: "Cold shoulder", tr: "Soğuk davranmak" }, { en: "The best of both worlds", tr: "Bir taşla iki kuş" }, { en: "Once in a blue moon", tr: "Kırk yılda bir" }, { en: "Bite off more than you can chew", tr: "Boyundan büyük iş" }, { en: "Don't judge a book by its cover", tr: "Görünüşe aldanma" }, { en: "Wrap your head around something", tr: "Bir şeyi kavramak" }, { en: "Keep your chin up", tr: "Metanetini koru" }, { en: "Let the cat out of the bag", tr: "Baklayı ağzından çıkarmak" }, { en: "The last straw", tr: "Sabrı taşıran son damla" }, { en: "Get out of hand", tr: "Çığrından çıkmak" }, { en: "Pull yourself together", tr: "Kendine gel" }, { en: "Barking up the wrong tree", tr: "Yanlış kapıyı çalmak" }, { en: "Go the extra mile", tr: "Fazladan çaba" }, { en: "Step up your game", tr: "Performansını artır" }, { en: "Back to the drawing board", tr: "Sil baştan başlamak" }, { en: "Burn the midnight oil", tr: "Gece gündüz çalışmak" }, { en: "Cut to the chase", tr: "Sadede gelmek" }, { en: "Hit the nail on the head", tr: "Tam üstüne basmak" }, { en: "Ignorance is bliss", tr: "Cehalet mutluluktur" }, { en: "It takes two to tango", tr: "Bir elin nesi var..." }, { en: "Keep something at bay", tr: "Uzak tutmak" }, { en: "Kill two birds with one stone", tr: "Bir taşla iki kuş" }, { en: "On the ball", tr: "İşini iyi bilmek" }, { en: "Rain on someone's parade", tr: "Sevincini kursağında bırakmak" }, { en: "Save for a rainy day", tr: "Kötü gün için saklamak" }, { en: "Slow and steady wins the race", tr: "Sabırlı olan kazanır" }, { en: "Spill the beans", tr: "Baklayı ağzından çıkarmak" }, { en: "Take it with a grain of salt", tr: "Şüpheyle yaklaşmak" }, { en: "Elephant in the room", tr: "Görmezden gelinen sorun" }, { en: "Through thick and thin", tr: "İyi günde kötü günde" }, { en: "To sit on the fence", tr: "Kararsız kalmak" }, { en: "Under your nose", tr: "Burnunun ucunda" }, { en: "When pigs fly", tr: "Asla olmayacak bir şey" }, { en: "Action speaks louder than words", tr: "Lafla peynir gemisi yürümez" }, { en: "Add insult to injury", tr: "Yangına körükle gitmek" }, { en: "Piece of the puzzle", tr: "Yapbozun parçası" }, { en: "A drop in the bucket", tr: "Devede kulak" },
+        { en: "Apple of my eye", tr: "Gözümün nuru" },
+        { en: "Around the clock", tr: "Gece gündüz / 7-24" },
+        { en: "At the end of the day", tr: "Günün sonunda / Sonuç olarak" },
+        { en: "Big picture", tr: "Büyük resim" },
+        { en: "Bird's eye view", tr: "Kuş bakışı" },
+        { en: "Break the bank", tr: "Çok pahalıya patlamak" },
+        { en: "By all means", tr: "Tabii ki / Elbette" },
+        { en: "Change of heart", tr: "Fikir değiştirmek" },
+        { en: "Check something out", tr: "Bir şeye göz atmak" },
+        { en: "Clean slate", tr: "Temiz bir sayfa" },
+        { en: "Come in handy", tr: "İşe yaramak" },
+        { en: "Count on someone", tr: "Birine güvenmek" },
+        { en: "Cross your fingers", tr: "Parmaklarını çaprazlamak (şans dilemek)" },
+        { en: "Cut corners", tr: "Kolaya kaçmak / Masraftan kısmak" },
+        { en: "Day in and day out", tr: "Her Allah'ın günü" },
+        { en: "Down to earth", tr: "Alçakgönüllü / Gerçekçi" },
+        { en: "Draw the line", tr: "Sınırı çizmek" },
+        { en: "Drop someone a line", tr: "Birine iki satır yazmak" },
+        { en: "Fair and square", tr: "Hakkıyla / Bileğinin gücüyle" },
+        { en: "Feel like a million dollars", tr: "Kendini çok iyi hissetmek" },
+        { en: "Follow in someone's footsteps", tr: "Birinin izinden gitmek" },
+        { en: "Get a grip", tr: "Kendine gel / Kontrolü ele al" },
+        { en: "Get to the point", tr: "Sadede gel" },
+        { en: "Give it a shot", tr: "Bir şans ver / Dene" },
+        { en: "Go with the flow", tr: "Akışına bırakmak" },
+        { en: "Hang in there", tr: "Dayan / Pes etme" },
+        { en: "Hold your horses", tr: "Sakin ol / Dur biraz" },
+        { en: "In the long run", tr: "Uzun vadede" },
+        { en: "Keep an eye on", tr: "Göz kulak olmak" },
+
+        { en: "Keep in touch", tr: "İrtibatta kalmak" },
+        { en: "Know something by heart", tr: "Ezbere bilmek" },
+        { en: "Learn the ropes", tr: "İşin inceliklerini öğrenmek" },
+        { en: "Let it go", tr: "Boşver / Üstünde durma" },
+        { en: "Long story short", tr: "Uzun lafın kısası" },
+        { en: "Lose track of time", tr: "Zamanın nasıl geçtiğini anlamamak" },
+        { en: "Make up your mind", tr: "Kararını ver" },
+        { en: "Miss the boat", tr: "Fırsatı kaçırmak" },
+        { en: "Music to my ears", tr: "Duymak istediğim şeyler" },
+        { en: "Next to nothing", tr: "Neredeyse hiç" },
+        { en: "No big deal", tr: "Önemli değil / Lafı bile olmaz" },
+        { en: "Off the hook", tr: "Yırtmak / Sorumluluktan kurtulmak" },
+        { en: "On cloud nine", tr: "Havalarda uçmak (mutluluktan)" },
+        { en: "Out of order", tr: "Bozyuk / Hizmet dışı" },
+        { en: "Out of this world", tr: "Olağanüstü / Muazzam" },
+        { en: "Over the moon", tr: "Çok mutlu" },
+        { en: "Piece of mind", tr: "İç huzuru" },
+        { en: "Play it by ear", tr: "Akışına göre hareket etmek" },
+        { en: "Put yourself in someone's shoes", tr: "Kendini birinin yerine koymak" },
+        { en: "Ring a bell", tr: "Tanıdık gelmek" },
+        { en: "Run out of time", tr: "Vakti azalmak" },
+        { en: "Safe and sound", tr: "Sağ salim" },
+        { en: "See eye to eye", tr: "Aynı fikirde olmak" },
+        { en: "Sleep on it", tr: "Üstüne bir yatıp düşünmek" },
+        { en: "Work like a charm", tr: "Tıkır tıkır işlemek" } 
+            ],
+            normal: [{ en: "Back against the wall", tr: "Sırtı duvara yaslanmak (çaresiz kalmak)" },
+    { en: "Bark is worse than his bite", tr: "Havlayan köpek ısırmaz" },
+    { en: "Burn bridges", tr: "Gemileri yakmak" },
+    { en: "Calm before the storm", tr: "Fırtına öncesi sessizlik" },
+    { en: "Caught red-handed", tr: "Suçüstü yakalanmak" },
+    { en: "Cut to the bone", tr: "Kemiğe dayanmak / Büyük kesinti yapmak" },
+    { en: "Diamond in the rough", tr: "İşlenmemiş cevher" },
+    { en: "Don't count your chickens", tr: "Dereyi görmeden paçayı sıvama" },
+    { en: "Elephant in the room", tr: "Görmezden gelinen devasa sorun" },
+    { en: "Every cloud has a silver lining", tr: "Her şerde bir hayır vardır" },
+    { en: "Fish out of water", tr: "Sudan çıkmış balık" },
+    { en: "Fit as a fiddle", tr: "Turp gibi / Çok sağlıklı" },
+    { en: "From scratch", tr: "Sıfırdan / En baştan" },
+    { en: "Get wind of something", tr: "Bir şeyin kokusunu almak (duymak)" },
+    { en: "Go down in flames", tr: "Feci şekilde başarısız olmak" },
+    { en: "Hear it on the grapevine", tr: "Söylenti duymak / Kulaktan dolma" },
+    { en: "Hit the ceiling", tr: "Tepesi atmak / Çok sinirlenmek" },
+    { en: "In a nutshell", tr: "Özetle / Kısacası" },
+    { en: "In the heat of the moment", tr: "O anın heyecanıyla" },
+    { en: "Keep your fingers crossed", tr: "Şans dilemek" },
+    { en: "Last resort", tr: "Son çare" },
+    { en: "Let sleeping dogs lie", tr: "Uyuyan yılanın kuyruğuna basmamak" },
+    { en: "Method to the madness", tr: "Deliliğin içinde bir mantık" },
+    { en: "No strings attached", tr: "Karşılıksız / Şart gözetmeksizin" },
+    { en: "On the fence", tr: "Kararsız kalmak" },
+    { en: "Out of the woods", tr: "Tehlikeyi atlatmak" },
+    { en: "Over the top", tr: "Aşırıya kaçmak" },
+    { en: "Piece of work", tr: "Zor/Garip tip" },
+    { en: "Pull someone's leg", tr: "Birini işletmek / Şaka yapmak" },
+    { en: "Read between the lines", tr: "Satır aralarını okumak" },
+    { en: "Rule of thumb", tr: "Genel kural / Göz kararı" },
+    { en: "Shot in the dark", tr: "Karanlığa kurşun sıkmak (tahmin)" },
+    { en: "Skeleton in the closet", tr: "Gizli kapaklı utanç verici sır" },
+    { en: "Spill the tea", tr: "Dedikodu yapmak" },
+    { en: "Steal someone's thunder", tr: "Birinin rolünü çalmak" },
+    { en: "Take it with a grain of salt", tr: "Şüpheyle yaklaşmak" },
+    { en: "The ball is in your court", tr: "Top sende (karar senin)" },
+    { en: "The best of both worlds", tr: "Bir taşla iki kuş" },
+    { en: "The tip of the iceberg", tr: "Buzdağının görünen kısmı" },
+    { en: "Throw in the towel", tr: "Havlu atmak (pes etmek)" },
+    { en: "Under the radar", tr: "Dikkat çekmeden / Gizlice" },
+    { en: "Up in the air", tr: "Belirsiz / Henüz netleşmemiş" },
+    { en: "Water under the bridge", tr: "Köprünün altından çok sular aktı" },
+    { en: "Wild goose chase", tr: "Boşuna kürek çekmek" },
+    { en: "Your guess is as good as mine", tr: "Ben de senin kadar biliyorum (hiç bilmiyorum)" },
+    { en: "A penny for your thoughts", tr: "Ne düşünüyorsun?" },
+    { en: "Bite the bullet", tr: "Acıya katlanmak / Dişini sıkmak" },
+    { en: "Break the ice", tr: "Ortamı yumuşatmak" },
+    { en: "Burn the midnight oil", tr: "Gece gündüz çalışmak" },
+    { en: "Cold feet", tr: "Son anda çekinmek / Vazgeçmek" },
+    { en: "Couch potato", tr: "Tembel / TV karşısından kalkmayan" },
+    { en: "Cut to the chase", tr: "Sadede gelmek" },
+    { en: "Face the music", tr: "Sonuçlara katlanmak" },
+    { en: "High five", tr: "Çak bir beşlik" },
+    { en: "Hold your tongue", tr: "Dilini tut" }, { en: "Beat around the bush", tr: "Lafı dolandırmak" },
+    { en: "Better safe than sorry", tr: "Eşeği sağlam kazığa bağlamak" },
+    { en: "Blessing in disguise", tr: "Gizli lütuf / Şer görünen hayır" },
+    { en: "Break a leg", tr: "Başarılar (Sahne öncesi)" },
+    { en: "Call it a day", tr: "Paydos etmek" },
+    { en: "Chew the fat", tr: "Havadan sudan konuşmak" },
+    { en: "Chip on your shoulder", tr: "Alınganlık / Kin beslemek" },
+    { en: "Close but no cigar", tr: "Yaklaştın ama olmadı" },
+    { en: "Come rain or shine", tr: "Ne olursa olsun" },
+    { en: "Curiosity killed the cat", tr: "Fazla merak iyi değildir" },
+    { en: "Cut someone some slack", tr: "Birine müsamaha göstermek" },
+    { en: "Don't put all eggs in one basket", tr: "Tüm varlığını tek şeye bağlama" },
+    { en: "Drastic times call for drastic measures", tr: "Zor zamanlar zor kararlar gerektirir" },
+    { en: "Elephant in the room", tr: "Herkesin bildiği ama konuşmadığı sorun" },
+    { en: "Every dog has its day", tr: "Herkesin şanslı bir günü vardır" },
+    { en: "Get a taste of your own medicine", tr: "Kendi kazdığı kuyuya düşmek" },
+    { en: "Give someone the benefit of the doubt", tr: "Hüsnüzanla yaklaşmak" },
+    { en: "Go back to the drawing board", tr: "Sil baştan başlamak" },
+    { en: "Hang in there", tr: "Dayan / Dişini sık" },
+    { en: "Hit the sack", tr: "Yatıp uyumak" },
+    { en: "It's not rocket science", tr: "Atla deve değil (zor değil)" },
+    { en: "Jump on the bandwagon", tr: "Modaya uymak / Çoğunluğa katılmak" },
+    { en: "Keep your chin up", tr: "Başını dik tut / Moralini bozma" },
+    { en: "Kill two birds with one stone", tr: "Bir taşla iki kuş" },
+    { en: "Last straw", tr: "Sabrı taşıran son damla" },
+    { en: "Let the cat out of the bag", tr: "Sırrı ağzından kaçırmak" },
+    { en: "Make a long story short", tr: "Lafın kısası" },
+    { en: "Miss the boat", tr: "Fırsatı kaçırmak" },
+    { en: "No pain, no gain", tr: "Emek olmadan yemek olmaz" },
+    { en: "On the ball", tr: "Uyanık / İşini bilen" },
+    { en: "Once in a blue moon", tr: "Kırk yılda bir" },
+    { en: "Play devil's advocate", tr: "Şeytanın avukatlığını yapmak" },
+    { en: "Pull yourself together", tr: "Kendini topla / Kendine gel" },
+    { en: "Rain on someone's parade", tr: "Birinin sevincini kursağında bırakmak" },
+    { en: "Rock the boat", tr: "Huzuru bozmak / İşleri karıştırmak" },
+    { en: "Save for a rainy day", tr: "Kötü günler için saklamak" },
+    { en: "See eye to eye", tr: "Aynı fikirde olmak" },
+    { en: "Sit on the fence", tr: "Taraf tutmamak / Kararsız kalmak" },
+    { en: "Speak of the devil", tr: "İti an çomağı hazırla" },
+    { en: "Steal someone's thunder", tr: "Birinin başarısına gölge düşürmek" },
+    { en: "Take it with a grain of salt", tr: "Şüpheyle karşılamak" },
+    { en: "The ball is in your court", tr: "Karar sırası sende" },
+    { en: "The best of both worlds", tr: "İki avantajı aynı anda kullanmak" },
+    { en: "The whole nine yards", tr: "Her ne varsa / Tamamı" },
+    { en: "Through thick and thin", tr: "İyi günde kötü günde" },
+    { en: "Time flies", tr: "Zaman akıp gider" },
+    { en: "To cut corners", tr: "Kolaya kaçmak" },
+    { en: "To get out of hand", tr: "Kontrolden çıkmak" },
+    { en: "To hit the nail on the head", tr: "Tam üstüne basmak / Doğruyu söylemek" },
+    { en: "To stab someone in the back", tr: "Birini arkasından bıçaklamak" },
+    { en: "Under the weather", tr: "Biraz rahatsız / Halsiz" },
+    { en: "Up in the air", tr: "Henüz kesinleşmemiş" },
+    { en: "We'll cross that bridge when we come to it", tr: "O gün gelsin bakarız" },
+    { en: "Wrap your head around something", tr: "Bir şeyi kavramak / Anlamak" },
+    { en: "You can say that again", tr: "Sana tamamen katılıyorum" }
+], hard: [{ en: "A bird in the hand is worth two in the bush", tr: "Eldeki bir kuş, daldaki iki kuştan iyidir" },
+    { en: "A blessing in disguise", tr: "Görünüşte kötü ama aslında hayırlı olan durum" },
+    { en: "A chip off the old block", tr: "Hık demiş burnundan düşmüş / Babasının oğlu" },
+    { en: "A dime a dozen", tr: "Sıradan / Her yerde bulunan / Çok ucuz" },
+    { en: "A leopard can't change its spots", tr: "Can çıkar huy çıkmaz" },
+    { en: "A penny saved is a penny earned", tr: "Sakla samanı gelir zamanı" },
+    { en: "A picture paints a thousand words", tr: "Bir resim bin söze bedeldir" },
+    { en: "A taste of your own medicine", tr: "Kendi kazdığı kuyuya düşmek" },
+    { en: "All in good time", tr: "Her şeyin bir vakti var" },
+    { en: "An arm and a leg", tr: "Ateş pahası / Çok pahalı" },
+    { en: "At the drop of a hat", tr: "Dünden hazır / Anında" },
+    { en: "Back to square one", tr: "Sil baştan başlamak" },
+    { en: "Barking up the wrong tree", tr: "Yanlış kapıyı çalmak / Yanlış iz sürmek" },
+    { en: "Beating a dead horse", tr: "Boşa kürek çekmek / Ölü yatırım" },
+    { en: "Between a rock and a hard place", tr: "İki ucu boklu değnek / Arada kalmak" },
+    { en: "Bite off more than you can chew", tr: "Boyundan büyük işe kalkışmak" },
+    { en: "Burn the candle at both ends", tr: "Kendini çok yormak / Gece gündüz çalışmak" },
+    { en: "By the skin of your teeth", tr: "Ucu ucuna / Kıl payı kurtulmak" },
+    { en: "Caught between two stools", tr: "İki arada bir derede kalmak" },
+    { en: "Curiosity killed the cat", tr: "Fazla merak iyi değildir" },
+    { en: "Cut the mustard", tr: "Beklentiyi karşılamak / İstenen kalitede olmak" },
+    { en: "Don't give up your day job", tr: "Bu işte yetenekli değilsin (şaka yollu)" },
+    { en: "Don't put all your eggs in one basket", tr: "Bütün varlığını tek bir şeye bağlama" },
+    { en: "Every cloud has a silver lining", tr: "Her kötü durumun içinde bir umut vardır" },
+    { en: "Every dog has its day", tr: "Herkesin şanslı bir günü olacaktır" },
+    { en: "Familiarity breeds contempt", tr: "Fazla muhabbet tez ayrılık getirir" },
+    { en: "Get out of hand", tr: "Çığrından çıkmak" },
+    { en: "Get your head around it", tr: "Bir şeyi kavramak / Anlamak" },
+    { en: "Give someone the cold shoulder", tr: "Birine soğuk davranmak / Görmezden gelmek" },
+    { en: "Go on a wild goose chase", tr: "Nafile bir arayış içinde olmak" },
+    { en: "He has bigger fish to fry", tr: "Uğraşması gereken daha önemli işleri var" },
+    { en: "Hear it on the grapevine", tr: "Kulaktan dolma bilgi almak" },
+    { en: "Hit the nail on the head", tr: "Tam üstüne basmak / Tam isabet" },
+    { en: "Ignorance is bliss", tr: "Cehalet mutluluktur" },
+    { en: "In the heat of the moment", tr: "O anın heyecanıyla / Düşünmeden" },
+    { en: "It takes two to tango", tr: "Bir elin nesi var iki elin sesi var" },
+    { en: "Jump on the bandwagon", tr: "Modaya uymak / Popüler olana katılmak" },
+    { en: "Keep something at bay", tr: "Bir şeyi kendinden uzak tutmak" },
+    { en: "Kill two birds with one stone", tr: "Bir taşla iki kuş vurmak" },
+    { en: "Last straw", tr: "Sabrı taşıran son damla" },
+    { en: "Leave no stone unturned", tr: "Bakmadık yer bırakmamak" },
+    { en: "Let sleeping dogs lie", tr: "Eski defterleri açmamak / Uyuyan devi uyandırmamak" },
+    { en: "Look before you leap", tr: "İnce eleyip sık dokumak" },
+    { en: "Make a long story short", tr: "Uzun lafın kısası" },
+    { en: "Method to my madness", tr: "Deliliğimin içinde bir mantık var" },
+    { en: "Miss the boat", tr: "Fırsatı kaçırmak" },
+    { en: "Not a spark of decency", tr: "Zerre kadar nezaket yok" },
+    { en: "Off the top of my head", tr: "Ezbere / Şöyle bir düşününce" },
+    { en: "On cloud nine", tr: "Havalarda uçmak / Çok mutlu olmak" },
+    { en: "Once in a blue moon", tr: "Kırk yılda bir" },
+    { en: "Out of the blue", tr: "Damdan düşer gibi / Aniden" },
+    { en: "Piece of cake", tr: "Çocuk oyuncağı" },
+    { en: "Play devil's advocate", tr: "Şeytanın avukatlığını yapmak" },
+    { en: "Pull yourself together", tr: "Kendini topla / Kendine gel" },
+    { en: "Rain on someone's parade", tr: "Birinin hevesini kursağında bırakmak" }, { en: "See eye to eye", tr: "Aynı fikirde olmak" },
+    { en: "Shed light on something", tr: "Bir konuya ışık tutmak" },
+    { en: "Sit on the fence", tr: "Tarafsız kalmak / Kararsız olmak" },
+    { en: "Skeleton in the closet", tr: "Saklanan utanç verici sır" },
+    { en: "Speak of the devil", tr: "İti an çomağı hazırla" },
+    { en: "Spill the beans", tr: "Ağzındaki baklayı çıkarmak" },
+    { en: "Steal someone's thunder", tr: "Birinin başarısını gölgelemek" },
+    { en: "Straight from the horse's mouth", tr: "Birinci ağızdan duymak" },
+    { en: "Take it with a grain of salt", tr: "Şüpheyle yaklaşmak" },
+    { en: "The ball is in your court", tr: "Sıra sende / Karar senin" },
+    { en: "The best of both worlds", tr: "İki farklı durumun en iyi yanları" },
+    { en: "The elephant in the room", tr: "Herkesin bildiği ama konuşmadığı büyük sorun" },
+    { en: "The last straw", tr: "Sabrı taşıran son damla" },
+    { en: "The whole nine yards", tr: "Nesi var nesi yoksa / Tamamı" },
+    { en: "Through thick and thin", tr: "İyi günde kötü günde" },
+    { en: "Time is money", tr: "Vakit nakittir" },
+    { en: "To cut corners", tr: "Masraftan veya emekten kısmak" },
+    { en: "To get out of hand", tr: "Kontrolden çıkmak" },
+    { en: "To hit the nail on the head", tr: "Tam üstüne basmak" },
+    { en: "To make a long story short", tr: "Sözün kısası" },
+    { en: "To stab someone in the back", tr: "Birini arkasından bıçaklamak" },
+    { en: "Under the weather", tr: "Halsiz / Keyifsiz" },
+    { en: "Up in the air", tr: "Henüz belirsiz / Havada kalmış" },
+    { en: "We'll cross that bridge when we come to it", tr: "O gün gelince düşünürüz" },
+    { en: "Wrap your head around something", tr: "Zor bir şeyi kavramak" },
+    { en: "You can say that again", tr: "Sana kesinlikle katılıyorum" },
+    { en: "Your guess is as good as mine", tr: "Ben de senin kadar biliyorum (bilmiyorum)" },
+    { en: "A bolt from the blue", tr: "Damdan düşer gibi / Beklenmedik olay" },
+    { en: "Back against the wall", tr: "Sırtı duvara yaslanmak / Çaresiz kalmak" },
+    { en: "Bite the bullet", tr: "Acı bir duruma göğüs germek" },
+    { en: "Break the ice", tr: "Buzları eritmek / Ortamı yumuşatmak" },
+    { en: "Burn the midnight oil", tr: "Gece gündüz çalışmak" },
+    { en: "By hook or by crook", tr: "Öyle ya da böyle / Ne yapıp edip" },
+    { en: "Call a spade a spade", tr: "Eğriye eğri doğruya doğru demek" },
+    { en: "Cry over spilt milk", tr: "Olmuşla ölmüşe çare yok" },
+    { en: "Cut to the chase", tr: "Sadede gelmek" },
+    { en: "Don't count your chickens before they hatch", tr: "Dereyi görmeden paçayı sıvama" },
+    { en: "Every cloud has a silver lining", tr: "Her şerde bir hayır vardır" },
+    { en: "Face the music", tr: "Yaptıklarının sonucuna katlanmak" },
+    { en: "Get a taste of your own medicine", tr: "Kendi kazdığı kuyuya düşmek" },
+    { en: "Go down in flames", tr: "Feci şekilde başarısız olmak" },
+    { en: "Hit the sack", tr: "Kafayı vurup yatmak" },
+    { en: "In a nutshell", tr: "Özetle / Kısacası" },
+    { en: "In the heat of the moment", tr: "O anın heyecanıyla" },
+    { en: "Keep your chin up", tr: "Moralini bozma / Dik dur" },
+    { en: "Let the cat out of the bag", tr: "Sırrı ifşa etmek" },
+    { en: "Miss the boat", tr: "Fırsatı kaçırmak" },
+    { en: "No pain, no gain", tr: "Emek olmadan yemek olmaz" },
+    { en: "On the ball", tr: "Becerikli / İşini iyi bilen" },
+    { en: "Once in a blue moon", tr: "Kırk yılda bir" },
+    { en: "Out of the woods", tr: "Tehlikeyi atlatmak" },
+    { en: "Play it by ear", tr: "Gelişine göre hareket etmek" },
+    { en: "Pull someone's leg", tr: "Birini işletmek / Şaka yapmak" },
+    { en: "Put your foot in it", tr: "Çam devirmek / Pot kırmak" },
+    { en: "Rock the boat", tr: "Düzeni bozmak / İşleri karıştırmak" },], multihard: [{ en: "A bird in the hand is worth two in the bush", tr: "Eldeki bir kuş daldaki iki kuştan iyidir" },
+    { en: "A drop in the ocean", tr: "Okyanusta bir damla / Devede kulak" },
+    { en: "A house divided against itself cannot stand", tr: "Birlikten kuvvet doğar (yoksa yıkılır)" },
+    { en: "A penny for your thoughts", tr: "Ne düşünüyorsun? / Anlat da dinleyelim" },
+    { en: "A watched pot never boils", tr: "Beklenen gün gelmez / Sabırsızlanmak süreyi uzatır" },
+    { en: "Absence makes the heart grow fonder", tr: "Ayrılık aşkı tazeler / Gözden ırak olan gönüle yakın olur" },
+    { en: "Actions speak louder than words", tr: "Ayinesi iştir kişinin lafa bakılmaz" },
+    { en: "All that glitters is not gold", tr: "Her parlayan altın değildir / Görünüşe aldanma" },
+    { en: "An apple a day keeps the doctor away", tr: "Güneş giren eve doktor girmez" },
+    { en: "Barking up the wrong tree", tr: "Yanlış kapıyı çalmak / Yanlış kişiyi suçlamak" },
+    { en: "Beauty is in the eye of the beholder", tr: "Güzellik bakanın gözündedir" },
+    { en: "Beggars can't be choosers", tr: "Muhtaç olanın seçme şansı yoktur" },
+    { en: "Better to light a candle than curse the darkness", tr: "Karanlığa küfredeceğine bir mum yak" },
+    { en: "Birds of a feather flock together", tr: "Tencere yuvarlanmış kapağını bulmuş" },
+    { en: "Blood is thicker than water", tr: "Et tırnaktan ayrılmaz" },
+    { en: "Burning the candle at both ends", tr: "Gece gündüz çalışıp kendini helak etmek" },
+    { en: "Don't bite the hand that feeds you", tr: "Besle kargayı oysun gözünü (yapma anlamında)" },
+    { en: "Don't put the cart before the horse", tr: "Arabayı atın önüne koşma / İşleri tersinden yapma" },
+    { en: "Don't throw the baby out with the bathwater", tr: "Kurunun yanında yaş yakma" },
+    { en: "Every cloud has a silver lining", tr: "Her şerde bir hayır vardır" },
+    { en: "Familiarity breeds contempt", tr: "Fazla muhabbet tez ayrılık getirir" },
+    { en: "Fortune favors the bold", tr: "Talih cesurdan yanadır" },
+    { en: "Good things come to those who wait", tr: "Sabreden derviş muradına ermiş" },
+    { en: "Great minds think alike", tr: "Aklın yolu birdir" },
+    { en: "Haste makes waste", tr: "Acele işe şeytan karışır" },
+    { en: "He who hesitates is lost", tr: "Kararsız kalan avucunu yalar" },
+    { en: "If it ain't broke, don't fix it", tr: "Çalışıyorsa dokunma" },
+    { en: "In the kingdom of the blind, the one-eyed man is king", tr: "Körler ülkesinde tek gözlü adam kraldır" },
+    { en: "It is better to have loved and lost than never to have loved at all", tr: "Sevmiş olmak hiç sevmemiş olmaktan iyidir" },
+    { en: "Kill two birds with one stone", tr: "Bir taşla iki kuş vurmak" },
+    { en: "Laughter is the best medicine", tr: "Gülmek en iyi ilaçtır" },
+    { en: "Let sleeping dogs lie", tr: "Uyuyan devi uyandırma / Eski defterleri açma" },
+    { en: "Like father, like son", tr: "Babasına bak oğlunu al" },
+    { en: "Look before you leap", tr: "İnce eleyip sık dokumak" },
+    { en: "Make hay while the sun shines", tr: "Demir tavında dövülür" },
+    { en: "Necessity is the mother of invention", tr: "İhtiyaç icadın anasıdır" },
+    { en: "Never look a gift horse in the mouth", tr: "Üzümünü ye bağını sorma" },
+    { en: "No man is an island", tr: "Kimse tek başına bir dünya değildir" },
+    { en: "Out of sight, out of mind", tr: "Gözden ırak olan gönülden de ırak olur" },
+    { en: "Practice makes perfect", tr: "İşleyen demir ışıldar" },
+    { en: "Rome wasn't built in a day", tr: "Büyük işler zaman alır" },
+    { en: "Still waters run deep", tr: "Yavaş tükürüğün sakala zararı vardır / Sessizden kork" },
+    { en: "The early bird catches the worm", tr: "Erken kalkan yol alır" },
+    { en: "The grass is always greener on the other side", tr: "Komşunun tavuğu komşuya kaz görünür" },
+    { en: "The pen is mightier than the sword", tr: "Kalem kılıçtan keskindir" },
+    { en: "Two heads are better than one", tr: "Bir elin nesi var iki elin sesi var" },
+    { en: "When in Rome, do as the Romans do", tr: "Gittiğin yerin adetine uy" },
+    { en: "Where there's smoke, there's fire", tr: "Ateş olmayan yerden duman çıkmaz" },
+    { en: "You can't judge a book by its cover", tr: "Görünüşe aldanma" },
+    { en: "You can lead a horse to water, but you can't make him drink", tr: "Zorla güzellik olmaz" },
+    { en: "Variety is the spice of life", tr: "Değişiklik hayatın tuzudur" },
+    { en: "A rolling stone gathers no moss", tr: "Yuvarlanan taş yosun tutmaz" },
+    { en: "Keep your friends close, and your enemies closer", tr: "Dostunu yakın tut düşmanını daha yakın" },
+    { en: "Easy come, easy go", tr: "Haydan gelen huya gider" },
+    { en: "Better late than never", tr: "Geç olsun da güç olmasın" }, { en: "A chain is only as strong as its weakest link", tr: "Zincir, en zayıf halkası kadar güçlüdür" },
+    { en: "A fool and his money are soon parted", tr: "Aptalın parası çabuk biter" },
+    { en: "A journey of a thousand miles begins with a single step", tr: "Bin millik yol bir adımla başlar" },
+    { en: "A man is known by the company he keeps", tr: "Bana arkadaşını söyle sana kim olduğunu söyleyeyim" },
+    { en: "A soft answer turns away wrath", tr: "Tatlı dil yılanı deliğinden çıkarır" },
+    { en: "All is fair in love and war", tr: "Aşkta ve savaşta her şey mübahtır" },
+    { en: "All work and no play makes Jack a dull boy", tr: "Sadece çalışmak insanı köreltir" },
+    { en: "As you sow, so shall you reap", tr: "Ne ekersen onu biçersin" },
+    { en: "Barking dogs seldom bite", tr: "Havlayan köpek ısırmaz" },
+    { en: "Beauty is skin deep", tr: "Güzellik geçicidir / Önemli olan iç güzellik" },
+    { en: "Better to be safe than sorry", tr: "Eşeği sağlam kazığa bağlamak" },
+    { en: "Blood is thicker than water", tr: "Et tırnaktan ayrılmaz" },
+    { en: "Clothes do not make the man", tr: "Eşek eşektir, semeri altından olsa da" },
+    { en: "Cowards die many times before their deaths", tr: "Korkak bin kere, cesur bir kere ölür" },
+    { en: "Diamonds cut diamonds", tr: "Çivi çiviyi söker" },
+    { en: "Discretion is the better part of valor", tr: "Tedbir cesaretten üstündür" },
+    { en: "Don't count your chickens before they're hatched", tr: "Dereyi görmeden paçayı sıvama" },
+    { en: "Don't look a gift horse in the mouth", tr: "Hediye atın dişine bakılmaz" },
+    { en: "Empty vessels make the most noise", tr: "Boş teneke çok ses çıkarır" },
+    { en: "Every man is the architect of his own fortune", tr: "Herkes kendi kaderinin demircisidir" },
+    { en: "Faint heart never won fair lady", tr: "Korkak şansını kaybeder / Cesur olan kazanır" },
+    { en: "Fine words butter no parsnips", tr: "Lafla peynir gemisi yürümez" },
+    { en: "God helps those who help themselves", tr: "Kul azmayınca hak yazmaz / Önce sen çabala" },
+    { en: "Great oaks from little acorns grow", tr: "Büyük işler küçük adımlarla başlar" },
+    { en: "He who laughs last, laughs best", tr: "Son gülen iyi güler" },
+    { en: "History repeats itself", tr: "Tarih tekerrürden ibarettir" },
+    { en: "Honesty is the best policy", tr: "Doğruluk en iyi yoldur" },
+    { en: "Hope for the best, prepare for the worst", tr: "İyiyi um, kötüye hazırlan" },
+    { en: "If wishes were horses, beggars would ride", tr: "Balık kavağa çıkınca / Keşkelerle iş yürümez" },
+    { en: "In for a penny, in for a pound", tr: "Girdiğin işi tam yap / Başladıysan bitir" },
+    { en: "It's never too late to mend", tr: "Zararın neresinden dönülse kârdır" },
+    { en: "Kill the goose that lays the golden eggs", tr: "Altın yumurtlayan tavuğu kesmek" },
+    { en: "Knowledge is power", tr: "Bilgi güçtür" },
+    { en: "Least said, soonest mended", tr: "Az laf çok iş / Az konuşan az hata yapar" },
+    { en: "Let the punishment fit the crime", tr: "Suça göre ceza" },
+    { en: "Like cures like", tr: "Çivi çiviyi söker" },
+    { en: "Look before you leap", tr: "İnce eleyip sık doku" },
+    { en: "Love is blind", tr: "Aşkın gözü kördür" },
+    { en: "Many hands make light work", tr: "Bir elin nesi var iki elin sesi var" },
+    { en: "Might is right", tr: "Güçlü olan haklıdır" },
+    { en: "Misery loves company", tr: "Dertli dertliyi sever" },
+    { en: "Necessity knows no law", tr: "Zorda kalan kural tanımaz" },
+    { en: "Never put off till tomorrow what you can do today", tr: "Bugünün işini yarına bırakma" },
+    { en: "No news is good news", tr: "Haber çıkmaması iyiye işarettir" },
+    { en: "Nothing ventured, nothing gained", tr: "Risk almayan kazanamaz" },
+    { en: "One man's meat is another man's poison", tr: "Birinin hayrı diğerinin şerri olabilir" },
+    { en: "Out of the frying pan into the fire", tr: "Yağmurdan kaçarken doluya tutulmak" },
+    { en: "Patience is a virtue", tr: "Sabır bir erdemdir" },
+    { en: "Penny wise and pound foolish", tr: "Küçük hesaplar yaparken büyük zarar etmek" },
+    { en: "Practice what you preach", tr: "Önce kendin yap, sonra akıl ver" },
+    { en: "Prevention is better than cure", tr: "Tedbir tedaviden iyidir" },
+    { en: "Strike while the iron is hot", tr: "Demiri tavında döv" },
+    { en: "The end justifies the means", tr: "Amaca giden her yol mübahtır" },
+    { en: "There is no smoke without fire", tr: "Ateş olmayan yerden duman çıkmaz" },
+    { en: "Too many cooks spoil the broth", tr: "Horozu çok olan köyde sabah geç olur" },], impossible: [{ en: "A fool's paradise", tr: "Boş hayallerle gelen mutluluk" },
+    { en: "A hot potato", tr: "Kimsenin üstlenmek istemediği zor mesele" },
+    { en: "A sea change", tr: "Köklü ve büyük değişim" },
+    { en: "Achilles' heel", tr: "Zayıf nokta / Yumuşak karın" },
+    { en: "All mouth and no trousers", tr: "Anca laf / İcraat yok" },
+    { en: "Armed to the teeth", tr: "Tepeden tırnağa silahlanmış" },
+    { en: "At loggerheads", tr: "Birbirine girmek / Sert ihtilaf" },
+    { en: "Back to the salt mines", tr: "Zorlu işe geri dönmek" },
+    { en: "Barking up the wrong tree", tr: "Yanlış kapıyı çalmak" },
+    { en: "Beating around the bush", tr: "Lafı dolandırmak" },
+    { en: "Bed of roses", tr: "Dikensiz gül bahçesi" },
+    { en: "Bite the dust", tr: "Yenilgiye uğramak / Hakkın rahmetine kavuşmak" },
+    { en: "Burn the midnight oil", tr: "Gece gündüz çalışmak" },
+    { en: "Bury the hatchet", tr: "Balta gömmek / Barış yapmak" },
+    { en: "By and large", tr: "Genel olarak / Şöyle bir bakınca" },
+    { en: "Cast pearls before swine", tr: "Domuzun önüne inci atmak (değer bilmeyene)" },
+    { en: "Chew the cud", tr: "Derin derin düşünmek" },
+    { en: "Cold comfort", tr: "Zayıf teselli / Faydasız avuntu" },
+    { en: "Curiosity killed the cat", tr: "Fazla merak başa bela" },
+    { en: "Dark horse", tr: "Sürpriz yumurta / Gizli yetenek" },
+    { en: "Dead as a doornail", tr: "Mevta olmuş / Tamamen cansız" },
+    { en: "Dog in the manger", tr: "Ne yer ne yedirir" },
+    { en: "Dutch courage", tr: "Alkolün verdiği sahte cesaret" },
+    { en: "Every cloud has a silver lining", tr: "Her şerde bir hayır vardır" },
+    { en: "Face the music", tr: "Sonuçlara katlanmak" },
+    { en: "Feather in your cap", tr: "Övünülecek başarı" },
+    { en: "Flog a dead horse", tr: "Ölü yatırımla uğraşmak" },
+    { en: "Fly in the ointment", tr: "Tadı tuzu kaçıran ufak sorun" },
+    { en: "Full of beans", tr: "Enerji dolu / Yerinde duramayan" },
+    { en: "Gird up your loins", tr: "Kemerleri sıkmak / Hazırlanmak" },
+    { en: "Go against the grain", tr: "Kendi doğasına aykırı gelmek" },
+    { en: "Go the whole hog", tr: "Bir işi tam ve eksiksiz yapmak" },
+    { en: "Graveyard shift", tr: "Gece mesaisi (mezarlık vardiyası)" },
+    { en: "Hale and hearty", tr: "Turp gibi / Sağlıklı ve güçlü" },
+    { en: "Hard nut to crack", tr: "Çetin ceviz / Zor kişi" },
+    { en: "Haul over the coals", tr: "Hesaba çekmek / Haşlamak" },
+    { en: "Heads will roll", tr: "Birilerinin kellesi gidecek (kovulacak)" },
+    { en: "In a blue moon", tr: "Kırk yılda bir" },
+    { en: "In the doldrums", tr: "Durgunluk / Keyifsizlik döneminde" },
+    { en: "It's all Greek to me", tr: "Bunlar bana Fransız (anlamıyorum)" },
+    { en: "Keep at arm's length", tr: "Mesafeli durmak" },
+    { en: "Kicking the bucket", tr: "Nalları dikmek" },
+    { en: "Lion's share", tr: "Aslan payı" },
+    { en: "Live from hand to mouth", tr: "Ucu ucuna yaşamak / Karın tokluğuna" },
+    { en: "Mad as a hatter", tr: "Zır deli" },
+    { en: "Make no bones about it", tr: "Lafı hiç esirgememek" },
+    { en: "Minding your Ps and Qs", tr: "Ağzından çıkanı duymak / Kibar olmak" },
+    { en: "Never-never land", tr: "Hayal dünyası" },
+    { en: "Not my cup of tea", tr: "Benim tarzım değil" },
+    { en: "Off the beaten track", tr: "Gözden ırak / Keşfedilmemiş yer" },
+    { en: "On the warpath", tr: "Savaş baltasını çıkarmış (çok kızgın)" },
+    { en: "Over the hill", tr: "Ununu elemiş eleğini asmış" },
+    { en: "Pass the buck", tr: "Sorumluluğu başkasına yıkmak" },
+    { en: "Pie in the sky", tr: "Gerçekleşmesi imkansız hayal" },
+    { en: "Red herring", tr: "Dikkat dağıtmak için uydurulan bahane" }, { en: "Read the riot act", tr: "Sert bir uyarıda bulunmak / Azarlamak" },
+    { en: "Ride shotgun", tr: "Ön koltuğa oturmak / Refakat etmek" },
+    { en: "Rule the roost", tr: "Borusu ötmek / Evin reisi olmak" },
+    { en: "Run the gauntlet", tr: "Ağır eleştirilere göğüs germek" },
+    { en: "Salt of the earth", tr: "Dünya iyisi / Dürüst ve güvenilir" },
+    { en: "Saved by the bell", tr: "Tam zamanında yetişen yardım" },
+    { en: "Scrape the barrel", tr: "Elde kalan son ve kötü şeyleri kullanmak" },
+    { en: "Sell down the river", tr: "İhanet etmek / Satmak" },
+    { en: "Shotgun wedding", tr: "Zoraki evlilik" },
+    { en: "Sitting duck", tr: "Kolay lokma / Hedef tahtası" },
+    { en: "Skeleton staff", tr: "Asgari kadro / En az personel" },
+    { en: "Sleep like a log", tr: "Ölü gibi uyumak" },
+    { en: "Sling mud", tr: "Çamur atmak / İftira etmek" },
+    { en: "Small fry", tr: "Önemsiz kimseler / Çıfıt takımı" },
+    { en: "Spanner in the works", tr: "Tekerine çomak sokmak" },
+    { en: "Steer clear of", tr: "Uzak durmak / Sakınmak" },
+    { en: "Stiff upper lip", tr: "Metanetini korumak / Duygularını belli etmemek" },
+    { en: "Storm in a teacup", tr: "Bir bardak suda fırtına koparmak" },
+    { en: "Take the bull by the horns", tr: "Boğayı boynuzundan yakalamak / Zorluğa göğüs germek" },
+    { en: "Talking through your hat", tr: "İşkembe-i kübradan atmak" },
+    { en: "The apple of discord", tr: "Nifak tohumu / Fitne sebebi" },
+    { en: "The icing on the cake", tr: "Kadayıfın üzerindeki kaymak / Pastanın çileği" },
+    { en: "The midas touch", tr: "Dokunduğunu altına çevirme yeteneği" },
+    { en: "Through the grapevine", tr: "Kulaktan dolma / Söylenti yoluyla" },
+    { en: "Throw caution to the wind", tr: "Her şeyi göze almak / Tedbiri bırakmak" },
+    { en: "To bell the cat", tr: "Tehlikeli bir işin sorumluluğunu üstlenmek" },
+    { en: "To bite the hand that feeds you", tr: "Nankörlük etmek / Besle kargayı oysun gözünü" },
+    { en: "To blow your own trumpet", tr: "Kendi reklamını yapmak / Kendini övmek" },
+    { en: "To buy a pig in a poke", tr: "Görmeden bir şeyi satın almak" },
+    { en: "To carry coals to Newcastle", tr: "Tereciye tere satmak" },
+    { en: "To eat humble pie", tr: "Hatasını kabul edip özür dilemek" },
+    { en: "To feather your own nest", tr: "Kendi çıkarını gözetmek / Köşeyi dönmek" },
+    { en: "To grease someone's palm", tr: "Rüşvet vermek / Elini yağlamak" },
+    { en: "To pay through the nose", tr: "Fahiş fiyat ödemek / Kazıklanmak" },
+    { en: "To spill the beans", tr: "Baklayı ağzından çıkarmak" },
+    { en: "Under the thumb", tr: "Avucunun içinde / Boyunduruk altında" },
+    { en: "Until the cows come home", tr: "Sonsuza dek / Çıkmaz ayın çarşambasına kadar" },
+    { en: "Upset the apple cart", tr: "Planları bozmak / Düzeni altüst etmek" },
+    { en: "Wear your heart on your sleeve", tr: "Duygularını gizleyememek / İçi dışı bir olmak" },
+    { en: "Wet behind the ears", tr: "Ağzı süt kokan / Tecrübesiz" },
+    { en: "Whistle in the dark", tr: "Korkusunu gizlemek için neşeli görünmek" },
+    { en: "Whistle-stop tour", tr: "Çok hızlı ve kısa süreli gezi" },
+    { en: "White elephant", tr: "Maliyetli ama faydasız şey" },
+    { en: "Wild and woolly", tr: "Düzensiz ve kaba / Başıboş" },
+    { en: "Wolf in sheep's clothing", tr: "Kuzu postuna bürünmüş kurt" },
+    { en: "Worth your salt", tr: "Aldığı parayı hak eden / İşinin ehli" },
+    { en: "Yellow-bellied", tr: "Korkak / Ödlek" },
+    { en: "You are what you eat", tr: "Ne yersen osun" },
+    { en: "You scratch my back and I'll scratch yours", tr: "Al gülüm ver gülüm / Karşılıklı yardımlaşma" },
+    { en: "Zero hour", tr: "Karar anı / Başlama saati" },
+    { en: "A bird's eye view", tr: "Kuş bakışı görünüş" },
+    { en: "Against all odds", tr: "Tüm zorluklara rağmen" },
+    { en: "All brawn and no brain", tr: "Kaba kuvvet var ama akıl yok" },
+    { en: "As cool as a cucumber", tr: "Dünya yansa umurunda olmayan / Çok sakin" },
+    { en: "Back on your feet", tr: "Yeniden ayağa kalkmak / İyileşmek" }, ],
+}
+
+
+
+    let selectedEn = null, selectedTr = null, activeLevel = "", timerInterval = null, timeLeft = 30; 
+    let roundCount = 1; 
+    let playerName = "Player"; 
+
+  onValue(ref(db, 'leaderboard'), (snapshot) => {
+    const list = document.getElementById('leaderboard-list');
+    if (!list) return;
+    
+    let scores = [];
+    snapshot.forEach(child => { 
+        const data = child.val();
+        // Sadece mevcut seçili seviyeye ait skorları filtrele (Opsiyonel)
+        if(data.level === activeLevel || !activeLevel) {
+            scores.push(data); 
+        }
+    });
+
+    // Küçükten büyüğe (en hızlı bitiren üste) sırala
+    scores.sort((a, b) => a.score - b.score);
+
+    // Sadece ilk 5'i al ve ekrana bas
+    list.innerHTML = scores.slice(0, 5).map(s => 
+        `<div style="border-bottom:1px solid #ddd; padding:5px;">
+            <b>${s.name}</b> (${s.level}): ${s.score}s
+        </div>`
+    ).join("");
+});
+    async function askDolphinAI() {
+        const qInput = document.getElementById('ai-question');
+        const bubble = document.getElementById('ai-bubble');
+        const btn = document.getElementById('ask-ai-btn');
+        const question = qInput.value.trim();
+        if(!question) return;
+        bubble.innerText = "Thinking...";
+        bubble.style.display = "block";
+        btn.disabled = true;
+        const dolphinRules = `
+            - Your name is 'Dolphin AI'. You are a friendly, helpful assistant.
+            - PRIMARY GOAL: Help the user understand English idioms.
+            - LANGUAGE RULE: Always reply in the SAME language the user uses.
+            - Keep responses concise (max 2 sentences).
+        `;
+        try {
+            const myKey = "AIzaSyAD86nNXHU7pR0g2Fxd-TvYv3ZYVALRkw8"; 
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${myKey}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: dolphinRules + "\n\n User Message: " + question }] }] })
+            });
+            const data = await response.json();
+            if (data.candidates && data.candidates[0].content) {
+                bubble.innerText = data.candidates[0].content.parts[0].text;
+            } else { bubble.innerText = "Try again..."; }
+        } catch (error) { bubble.innerText = "Connection failed."; }
+        finally { btn.disabled = false; }
+    }
+
+    window.startGame = function(lvl) {
+        roundCount = 1;
+        const nameBox = document.getElementById('player-name-input');
+        playerName = (nameBox && nameBox.value.trim() !== "") ? nameBox.value.trim() : "Player";
+        activeLevel = lvl;
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+        document.getElementById('lvl-title').innerText = lvl.toUpperCase();
+        const rd = document.getElementById('round-display');
+        if(rd) rd.innerText = `Round: ${roundCount} / 5`;
+        renderCards();
+        startTimer();
+    };
+
+    function renderCards() {
+        const area = document.getElementById('match-area');
+        if(!area) return;
+        area.innerHTML = '';
+        let count = 5;
+        if(activeLevel === 'easy') count = 3;
+        else if(activeLevel === 'normal') count = 4;
+        else if(activeLevel === 'hard') count = 5;
+        else if(activeLevel === 'multihard') count = 6;
+        else if(activeLevel === 'impossible') count = 7;
+
+        let levelData = [...idiomsData[activeLevel]];
+        let selectedData = levelData.sort(() => 0.5 - Math.random()).slice(0, count);
+        let leftItems = selectedData.map((item, index) => ({ text: item.en, matchId: index }));
+        let rightItems = selectedData.map((item, index) => ({ text: item.tr, matchId: index }));
+        leftItems.sort(() => 0.5 - Math.random());
+        rightItems.sort(() => 0.5 - Math.random());
+
+        const createColumn = (items, type) => {
+            let col = document.createElement('div');
+            col.style.display = "flex"; col.style.flexDirection = "column"; col.style.gap = "10px";
+            items.forEach(item => {
+                let card = document.createElement('div');
+                card.className = 'card';
+                card.innerText = item.text;
+                card.onclick = () => handleMatch(card, item.matchId, type);
+                col.appendChild(card);
+            });
+            return col;
+        };
+        area.appendChild(createColumn(leftItems, 'en'));
+        area.appendChild(createColumn(rightItems, 'tr'));
+    }
+
+   function handleMatch(card, id, type) {
+    // Kart zaten doğruysa veya seçiliyse işlem yapma
+    if(card.classList.contains('correct') || card.classList.contains('selected')) return;
+
+    // Seçim Mantığı
+    if(type === 'en') { 
+        if(selectedEn) selectedEn.classList.remove('selected'); 
+        selectedEn = card; selectedEn.matchId = id; 
+    } else { 
+        if(selectedTr) selectedTr.classList.remove('selected'); 
+        selectedTr = card; selectedTr.matchId = id; 
+    }
+    card.classList.add('selected');
+
+    // İki kart da seçildiyse kontrol et
+    if(selectedEn && selectedTr) {
+        if(selectedEn.matchId === selectedTr.matchId) {
+            // --- EŞLEŞME DOĞRU ---
+            selectedEn.className = 'card correct'; 
+            selectedTr.className = 'card correct';
+            selectedEn = null; 
+            selectedTr = null;
+
+            // Turdaki tüm kartlar bitti mi?
+            if(document.querySelectorAll('.card:not(.correct)').length === 0) {
+                
+                if (roundCount < 5) {
+                    // --- YENİ ROUND BAŞLAT ---
+                    roundCount++;
+                    const rd = document.getElementById('round-display');
+                    if(rd) rd.innerText = `Round: ${roundCount} / 5`;
+                    
+                    startTimer(); // Süreyi 30'a sıfırlar
+                    setTimeout(renderCards, 600);
+                } else {
+                    // --- OYUN TAMAMEN BİTTİ (5. ROUND SONU) ---
+                    // "Else" kısmı tam burası, yani 5 round dolunca çalışacak yer.
+                    
+                    clearInterval(timerInterval);
+                    const finalScore = (30 - timeLeft).toFixed(1);
+
+                    // Firebase'e Kaydet
+                    push(ref(db, 'leaderboard'), { 
+                        name: playerName, 
+                        score: parseFloat(finalScore),
+                        level: activeLevel 
+                    });
+
+                    // 1. Kartları gizle (Böylece mevcut butonun yukarı kayar)
+                    const matchArea = document.getElementById('match-area');
+                    if(matchArea) matchArea.style.display = "none";
+
+                    // 2. Butonun üstündeki boşluğa bilgileri yazdır (Site mesajı yerine)
+                    const infoDiv = document.getElementById('end-info');
+                    if(infoDiv) {
+                        infoDiv.innerHTML = `
+                            <h2 style="color:#2ecc71;">Congratulations ${playerName}!</h2>
+                            <p>TİME: <b>${finalScore}s</b> | LEVEL: <b>${activeLevel.toUpperCase()}</b></p>
+                        `;
+                        infoDiv.style.display = "block";
+                    }
+                }
+            }
+        } else {
+            // --- EŞLEŞME YANLIŞ ---
+            let e = selectedEn, t = selectedTr;
+            e.className = 'card wrong'; 
+            t.className = 'card wrong';
+            
+            setTimeout(() => { 
+                e.className = 'card'; 
+                t.className = 'card'; 
+            }, 500);
+            
+            selectedEn = null; 
+            selectedTr = null;
+        }
+    }
+}
+
+    function startTimer() {
+        timeLeft = 30; // SÜRE TEKRAR 30 OLDU
+        const bar = document.getElementById('timer-bar');
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            timeLeft -= 0.1;
+            if(bar) bar.style.width = (timeLeft / 30 * 100) + "%";
+            if(timeLeft <= 0) { clearInterval(timerInterval); alert("Time is up!"); location.reload(); }
+        }, 100);
+    }
+
+    window.openDictionary = function() {
+        const listContainer = document.getElementById('dict-list');
+        const modal = document.getElementById('dict-modal');
+        if(!listContainer || !modal) return;
+        let allIdioms = [];
+        for (let level in idiomsData) { allIdioms = allIdioms.concat(idiomsData[level]); }
+        allIdioms.sort((a, b) => a.en.localeCompare(b.en));
+        let html = "";
+        allIdioms.forEach(item => { html += `<div class="idiom-item"><b>${item.en}</b>: ${item.tr}</div>`; });
+        listContainer.innerHTML = html;
+        modal.style.display = "block";
+    };
+    window.closeDictionary = function() {
+        const modal = document.getElementById('dict-modal');
+        if(modal) modal.style.display = "none";
+    };
+
+    document.getElementById('ask-ai-btn').onclick = askDolphinAI;
+    document.getElementById('ai-question').onkeypress = (e) => { if(e.key === 'Enter') askDolphinAI(); };
+    document.querySelectorAll('.lvl-btn').forEach(btn => {
+        btn.onclick = () => startGame(btn.getAttribute('data-lvl'));
+    });
+</script>
+</body>
+</html>
