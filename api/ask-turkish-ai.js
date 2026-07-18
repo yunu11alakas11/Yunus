@@ -5,7 +5,8 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'Sistemde API anahtarı eksik!' });
+    console.error("HATA: Vercel panelinde API anahtarı bulunamadı!");
+    return res.status(500).json({ text: "Sistemde API anahtarı eksik!" });
   }
 
   try {
@@ -17,30 +18,29 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `Sen yerel, samimi ve eğlenceli bir dil kullanan 'Türkiş AI' isimli bir yapay zekasın. Soru şudur: ${question}`
-                }
-              ]
-            }
-          ]
+          contents: [{ parts: [{ text: `Sen yerel, samimi ve eğlenceli bir dil kullanan 'Türkiş AI' isimli bir yapay zekasın. Soru şudur: ${question}` }] }]
         })
       }
     );
 
     const data = await response.json();
 
+    // Google bir hata kodu döndüyse bunu Vercel loglarına KANLI CANLI yazdır
+    if (data.error) {
+      console.error("GOOGLE API GERÇEK HATASI:", JSON.stringify(data.error, null, 2));
+      return res.status(200).json({ text: `Google Hatası: ${data.error.message}` });
+    }
+
     if (data && data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
       const aiReply = data.candidates[0].content.parts[0].text;
       return res.status(200).json({ text: aiReply });
     }
 
-    return res.status(200).json({ text: "Sistemde ufak bir temassızlık oldu abi, tekrar dener misin?" });
+    console.error("HATA: Google'dan garip bir veri yapısı döndü:", JSON.stringify(data, null, 2));
+    return res.status(200).json({ text: "Sistemde veri yapısı uyuşmazlığı var." });
 
   } catch (error) {
-    console.error("Gemini Hatası:", error);
-    return res.status(500).json({ text: "Sistemde ufak bir temassızlık oldu abi, tekrar dener misin?" });
+    console.error("SUNUCU ÇÖKME HATASI:", error);
+    return res.status(500).json({ text: "Sunucu tarafında bir şey çöktü." });
   }
 }
