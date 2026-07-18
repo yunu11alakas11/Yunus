@@ -1,4 +1,4 @@
-import https from 'https';
+const https = require('https');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,7 +12,6 @@ export default async function handler(req, res) {
 
   const { question } = req.body;
   
-  // Google'ın kabul ettiği standart JSON gövdesi
   const postData = JSON.stringify({
     contents: [{ 
       parts: [{ 
@@ -21,7 +20,6 @@ export default async function handler(req, res) {
     }]
   });
 
-  // URL karmaşasına son veren doğrudan HTTPS istek ayarları
   const options = {
     hostname: 'generativelanguage.googleapis.com',
     port: 443,
@@ -33,7 +31,6 @@ export default async function handler(req, res) {
     }
   };
 
-  // İsteği Node.js yerleşik modülüyle güvenli şekilde gönderiyoruz
   const request = https.request(options, (response) => {
     let data = '';
 
