@@ -1,6 +1,6 @@
 const https = require('https');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Sadece POST istekleri kabul edilir' });
   }
@@ -63,4 +63,4 @@ export default async function handler(req, res) {
 
   request.write(postData);
   request.end();
-}
+};
