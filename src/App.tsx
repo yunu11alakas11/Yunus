@@ -38,10 +38,10 @@ type Message = {
 }
 
 const SUGGESTIONS = [
-  'Bite the bullet ne demek?',
-  'Break a leg deyimini açıkla',
-  'Under the weather anlamı nedir?',
-  'Spill the beans ne anlama gelir?',
+  'ABD-İran savaşı son durum?',
+  'ipe un sermek deyimini açıkla',
+  'CAATSA yaptırımları  nedir?',
+  'LGS 2026 sınav sonuçları açıklandı mı?',
 ]
 
 function now() {
