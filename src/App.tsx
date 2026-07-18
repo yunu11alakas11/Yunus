@@ -76,11 +76,12 @@ export default function App() {
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
    try {
-      const response = await fetch('/api/ask-turkish-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text.trim() })
-      });
+      const response = await fetch('/API/ask-turkish-ai', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ question: text.trim() })
+});
+      
       
       const data = await response.json();
 
