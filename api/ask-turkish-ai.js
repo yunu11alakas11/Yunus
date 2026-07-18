@@ -11,9 +11,9 @@ export default async function handler(req, res) {
   try {
     const { question } = req.body;
     
-    // Node.js 18+ ile doğrudan çalışan sorunsuz fetch komutu
+    // Hatanın çözümü: v1 sürümü ve gemini-1.5-flash-latest modeli kullanıldı
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
