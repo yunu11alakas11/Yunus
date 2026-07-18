@@ -1,3 +1,5 @@
+const { GoogleGenAI } = require('@google/genai');
+
 export default async function handler(req, res) {
   // 1. Sadece POST isteklerine izin ver
   if (req.method !== 'POST') {
@@ -13,40 +15,24 @@ export default async function handler(req, res) {
   try {
     const { question } = req.body;
 
-    // 3. Gemini API'sine istek at (Model gemini-1.5-flash olarak güncellendi)
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `Sen yerel, samimi ve eğlenceli bir dil kullanan 'Türkiş AI' isimli bir yapay zekasın. Soru şudur: ${question}`
-                }
-              ]
-            }
-          ]
-        })
-      }
-    );
+    // 3. SDK'yı başlat
+    const ai = new GoogleGenAI({ apiKey: apiKey });
 
-    const data = await response.json();
+    // 4. İstediğin güncel model ile içeriği üret
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash', // Veya kodundaki 'gemini-1.5-flash'
+      contents: `Sen yerel, samimi ve eğlenceli bir dil kullanan 'Türkiş AI' isimli bir yapay zekasın. Soru şudur: ${question}`,
+    });
 
-    // 4. Gemini'den gelen ham veriyi backend'de kontrol et ve ayıkla
-    if (data && data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-      const aiReply = data.candidates[0].content.parts[0].text;
-      return res.status(200).json({ text: aiReply });
+    // 5. SDK sayesinde gelen temiz metni doğrudan al ve dön
+    if (response && response.text) {
+      return res.status(200).json({ text: response.text });
     }
 
-    // Eğer veri var ama aradığımız formatta değilse bu cevabı dön
     return res.status(200).json({ text: "Sistemde ufak bir temassızlık oldu abi, tekrar dener misin?" });
 
   } catch (error) {
-    // 5. Ağ hatası veya sunucu tarafında beklenmedik bir çökme olursa çalışacak kısım
-    console.error("Gemini API Hatası:", error);
+    console.error("Gemini SDK Hatası:", error);
     return res.status(500).json({ text: "Sistemde ufak bir temassızlık oldu abi, tekrar dener misin?" });
   }
 }
