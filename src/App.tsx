@@ -76,25 +76,25 @@ export default function App() {
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
     try {
-      const response = await fetch('/api/ask-turkish-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text.trim() })
-      })
-      const data = await response.json()
-      
-      if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
-        const aiReply = data.candidates[0].content.parts[0].text
-        setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: aiReply, time: now() }])
-      } else {
-        setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Sistemde ufak bir temassızlık oldu abi, tekrar dener misin?', time: now() }])
-      }
-    } catch {
-      setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Bağlantı kurulamadı, interneti veya API anahtarını kontrol et.', time: now() }])
-    } finally {
-      setLoading(false)
-    }
+  const response = await fetch('/api/ask-turkish-ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: text.trim() })
+  });
+  
+  const data = await response.json();
+
+  // Backend'den gelen temiz metni doğrudan ekrana basıyoruz
+  if (data && data.text) {
+    setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: data.text, time: now() }]);
+  } else {
+    setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Sistemde ufak bir temassızlık oldu abi, tekrar dener misin?', time: now() }]);
   }
+} catch {
+  setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Bağlantı kurulamadı, interneti veya API anahtarını kontrol et.', time: now() }]);
+} finally {
+  setLoading(false);
+}
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
