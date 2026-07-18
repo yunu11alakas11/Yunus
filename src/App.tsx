@@ -75,27 +75,25 @@ export default function App() {
     setLoading(true)
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
 
-    try {
-  const response = await fetch('/api/ask-turkish-ai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question: text.trim() })
-  });
-  
-  const data = await response.json();
+   try {
+      const response = await fetch('/api/ask-turkish-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: text.trim() })
+      });
+      
+      const data = await response.json();
 
-  // Backend'den gelen temiz metni doğrudan ekrana basıyoruz
-  if (data && data.text) {
-    setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: data.text, time: now() }]);
-  } else {
-    setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Sistemde ufak bir temassızlık oldu abi, tekrar dener misin?', time: now() }]);
-  }
-} catch {
-  setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Bağlantı kurulamadı, interneti veya API anahtarını kontrol et.', time: now() }]);
-} finally {
-  setLoading(false);
-}
-
+      if (data && data.text) {
+        setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: data.text, time: now() }]);
+      } else {
+        setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Sistemde ufak bir temassızlık oldu abi, tekrar dener misin?', time: now() }]);
+      }
+    } catch (error) { // Try bittikten hemen sonra Catch başlamalı
+      setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Bağlantı kurulamadı, interneti veya API anahtarını kontrol et.', time: now() }]);
+    } finally {
+      setLoading(false);
+    } // sendMessage fonksiyonunu kapatan parantez burası olmalı
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
