@@ -93,7 +93,8 @@ export default function App() {
       setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Bağlantı kurulamadı, interneti veya API anahtarını kontrol et.', time: now() }]);
     } finally {
       setLoading(false);
-    } // sendMessage fonksiyonunu kapatan parantez burası olmalı
+    }
+  }
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
