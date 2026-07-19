@@ -74,14 +74,29 @@ export default function App() {
     setInput('')
     setLoading(true)
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
+try {
+  const response = await fetch('/API/ask-turkish-ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: text.trim() })
+  });
 
-   try {
-      const response = await fetch('/API/ask-turkish-ai', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ question: text.trim() })
-});
-      
+  // 1. Cevabı JSON olarak al
+  const data = await response.json();
+
+  // 2. Konsola yazdır (sorun buradaysa burada göreceğiz)
+  console.log("Sunucudan gelen cevap:", data);
+
+  // 3. Eğer backend doğru çalışıyorsa, cevabı ekrana yazdır
+  if (data.text) {
+    setAiResponse(data.text); // 'setAiResponse' senin ekranı güncelleyen state fonksiyonun olmalı
+  } else {
+    console.error("Beklenen formatta cevap gelmedi:", data);
+  }
+
+} catch (error) {
+  console.error("Bir hata oluştu:", error);
+}
       
       const data = await response.json();
 
