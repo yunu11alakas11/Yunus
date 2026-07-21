@@ -1,4 +1,4 @@
-v// Kodun en başına ekle:
+// Kodun en başına ekle:
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req, res) {
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
     // Model ismini listene uygun şekilde güncelledik
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
