@@ -9,10 +9,10 @@
     "preview": "vite preview",
     "format": "oxfmt"
   },
- "dependencies": {
+"dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@google/genai": "^0.1.1"
+    "@google/genai": "^0.1.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
