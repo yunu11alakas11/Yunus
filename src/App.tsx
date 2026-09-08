@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { GoogleGenAI } from "@google/genai"
 
 function GeminiStar({ size = 28 }: { size?: number }) {
   return (
@@ -69,6 +70,36 @@ export default function App() {
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return
+    
+    const userMsg: Message = { id: Date.now(), role: 'user', text: text.trim(), time: now() }
+    setMessages(prev => [...prev, userMsg])
+    setInput('')
+    setLoading(true)
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
+
+    try {
+      // Doğrudan tarayıcıdan güvenli şekilde Vercel ortam değişkenini kullanır
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-1.5-flash',
+        contents: text.trim(),
+      });
+
+      const aiText = response.text;
+
+      if (aiText) {
+        setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: aiText, time: now() }]);
+      } else {
+        setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Yapay zekadan boş yanıt döndü.', time: now() }]);
+      }
+    } catch (error) {
+      console.error("Gemini Hatası:", error);
+      setMessages(prev => [...prev, { id: Date.now() + 1, role: 'ai', text: 'Bağlantı kurulamadı, lütfen Vercel Environment Variables kısmından VITE_GEMINI_API_KEY tanımladığınızdan emin olun.', time: now() }]);
+    } finally {
+      setLoading(false);
+    }
+  }
     
     const userMsg: Message = { id: Date.now(), role: 'user', text: text.trim(), time: now() }
     setMessages(prev => [...prev, userMsg])
