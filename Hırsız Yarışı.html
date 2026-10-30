@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hırsız Yarışı</title>
+<style>
+:root{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#1d4d2b;color:#fff;font-family:system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;font-weight:700;font-size:1.05rem;pointer-events:none;text-shadow:0 1px 3px #000}
+#msg{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000b;text-align:center;padding:20px;overflow-y:auto}
+#msg h1{margin:0 0 8px;font-size:2rem}
+#msg p{margin:4px 0;max-width:380px;line-height:1.4;color:#ddd}
+#go{margin-top:18px;padding:14px 34px;font-size:1.1rem;font-weight:700;border:0;border-radius:12px;background:#e63946;color:#fff;cursor:pointer}
+.c{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));display:none;gap:12px}
+.c button{width:70px;height:70px;border-radius:50%;border:2px solid #fff6;background:#00000055;color:#fff;font-size:1.5rem;touch-action:none}
+#cl{left:14px}#cr{right:14px}
+#shop{display:flex;flex-direction:column;gap:8px;margin-top:10px;width:min(340px,100%)}
+#shop button{padding:10px 12px;border-radius:10px;border:1px solid #fff4;background:#ffffff1a;color:#fff;font-size:.95rem;text-align:left;cursor:pointer}
+#shop button:disabled{opacity:.4;cursor:default}
+#cars{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:12px;width:min(360px,100%)}
+#cars button{flex:1 1 150px;padding:8px 10px;border-radius:10px;border:2px solid #fff3;background:#ffffff12;color:#fff;font-size:.85rem;text-align:left;cursor:pointer}
+#cars button.sel{border-color:#ffd23f;background:#ffd23f33}
+#cars i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid #0006}
+</style></head><body>
+<canvas id="cv"></canvas>
+<div id="hud"><span id="s1"></span><span id="s2"></span><span id="s3"></span></div>
+<div class="c" id="cl"><button data-k="left">◀</button><button data-k="right">▶</button></div>
+<div class="c" id="cr"><button data-k="down">■</button><button data-k="up">⚡</button></div>
+<div id="msg"><h1>🚓 Hırsız Yarışı</h1>
+<p>Otoyolda kaçan hırsızı yakala!</p>
+<p><b>Sol / Sağ:</b> şerit değiştir<br><b>Yukarı / ⚡:</b> turbo &nbsp; <b>Aşağı / ■:</b> fren</p>
+<p>Her turda süre var. Yakaladığın her hırsız 1 puan; puanla turbo motorunu geliştir! Çarpma, kaçmasına da izin verme.</p>
+<div id="cars"></div>
+<div id="shop"></div>
+<button id="go">Başla</button></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const LW=80,LN=4,RD=LW*LN,HALF=RD/2;
+const lane=i=>-HALF+LW*(i+.5);
+const keys={},tk={};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;if(e.key.startsWith('Arrow'))e.preventDefault()});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
+document.querySelectorAll('.c button').forEach(b=>{const k=b.dataset.k;
+const on=e=>{e.preventDefault();tk[k]=1},off=e=>{e.preventDefault();tk[k]=0};
+b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointerleave',off);b.addEventListener('pointercancel',off)});
+if('ontouchstart'in window||navigator.maxTouchPoints>0)document.querySelectorAll('.c').forEach(c=>c.style.display='flex');
+let wallet=0,up={m:0,d:0,r:0},tur=1,tl=50,mi=0;try{const s=JSON.parse(localStorage.getItem('hy')||'null');if(s){wallet=s.w;up=s.u;tur=s.t;mi=s.c||0}}catch(e){}
+let st='menu',D=0,PX=0,spd=290,nit=1,lives=3,score=0,level=1,traffic=[],th,catchM=0,inv=0,shake=0,banner='',bt=0,spawnT=0,vis={h:720,py:560};
+const COLS=['#e0a030','#3b7dd8','#2fae6a','#b04bd0','#d8d8d8','#e07040','#40b8c8'];
+function init(){D=0;PX=lane(1);spd=290;nit=1;lives=MODELS[mi].hp;score=0;level=tur;tl=50;traffic=[];catchM=0;inv=0;shake=0;banner='';bt=0;spawnT=0;
+th={x:lane(2),wy:350,tl:2,boost:0,bt:4,sw:1};
+for(let i=0;i<5;i++)spawn(220+i*120)}
+function spawn(wy){
+const occ=new Set();for(const c of traffic)if(Math.abs(c.wy-wy)<260)occ.add(c.l);
+if(occ.size>=2)return;
+let l,g=0;do{l=Math.random()*LN|0}while((occ.has(l)||(Math.abs(th.wy-wy)<160&&th.tl==l))&&g++<12);
+if(occ.has(l))return;
+traffic.push({l,x:lane(l),wy,sp:110+Math.random()*80,col:COLS[Math.random()*COLS.length|0]})}
+function over(t,p){st='over';const m=document.getElementById('msg');m.style.display='flex';
+m.querySelector('h1').textContent=t;const ps=m.querySelectorAll('p');
+ps[0].innerHTML='Yakalanan hırsız: <b>'+score+'</b>';ps[1].textContent=p;ps[2].textContent='';
+document.getElementById('go').textContent='Tekrar Oyna'}
+document.getElementById('go').onclick=()=>{init();st='play';document.getElementById('msg').style.display='none'};
+const MODELS=[{n:'Devriye Sedan',d:'Dengeli',col:'#f2f2f2',st:270,bs:295,hp:3,sty:0},{n:'Spor Coupe',d:'Keskin direksiyon',col:'#2f7bff',st:320,bs:295,hp:3,sty:1},{n:'Muscle Car',d:'Yüksek hız',col:'#f0a820',st:250,bs:320,hp:3,sty:3},{n:'Zırhlı SUV',d:'4 can, sağlam',col:'#3b414d',st:255,bs:295,hp:4,sty:2}];
+function renderCars(){const s=document.getElementById('cars');s.innerHTML='';MODELS.forEach((m,i)=>{const b=document.createElement('button');b.className=i==mi?'sel':'';
+b.innerHTML='<i style="background:'+m.col+'"></i><b>'+m.n+'</b><br><small>'+m.d+'</small>';b.onclick=()=>{mi=i;save();renderCars()};s.appendChild(b)})}
+const ITEMS=[['m','🔧 Turbo Motor','Turbo hızı artar'],['d','⏳ Turbo Süresi','Turbo daha uzun sürer'],['r','🔋 Turbo Dolumu','Turbo daha hızlı dolar']],MAXU=5;
+function save(){try{localStorage.setItem('hy',JSON.stringify({w:wallet,u:up,t:tur,c:mi}))}catch(e){}}
+function renderShop(){const s=document.getElementById('shop');s.innerHTML='<div><b>⭐ Puan: '+wallet+'</b></div>';
+for(const[k,n,d]of ITEMS){const b=document.createElement('button'),mx=up[k]>=MAXU,c=up[k]+1;b.disabled=mx||wallet<c;
+b.innerHTML='<b>'+n+'</b> &nbsp;Sv. '+up[k]+'/'+MAXU+'<br><small>'+d+' · '+(mx?'MAX':c+' puan')+'</small>';
+b.onclick=()=>{wallet-=c;up[k]++;save();renderShop()};s.appendChild(b)}}
+function endTur(t){st='over';const m=document.getElementById('msg');m.style.display='flex';
+m.querySelector('h1').textContent=t;const ps=m.querySelectorAll('p');
+ps[0].innerHTML='Tur '+tur+' bitti — yakalanan hırsız: <b>'+score+'</b>';ps[1].textContent='Her hırsız 1 puan. Puanla arabanı geliştir!';ps[2].textContent='Sonraki turda hırsızlar daha hızlı olacak.';
+tur++;save();renderShop();document.getElementById('go').textContent='Tur '+tur+' ▶'}
+renderCars();if(wallet>0)renderShop();
+function resize(){const d=devicePixelRatio||1;cv.width=innerWidth*d;cv.height=innerHeight*d}
+addEventListener('resize',resize);resize();
+function blocked(l){for(const c of traffic)if(c.l==l&&c.wy-th.wy>-40&&c.wy-th.wy<240)return true;return false}
+function update(dt){
+const L=keys.arrowleft||keys.a||tk.left,R=keys.arrowright||keys.d||tk.right,U=keys.arrowup||keys.w||tk.up,B=keys.arrowdown||keys.s||tk.down;
+PX+=((R?1:0)-(L?1:0))*MODELS[mi].st*dt;PX=Math.max(-HALF+22,Math.min(HALF-22,PX));
+const useN=U&&nit>0.02;
+if(useN)nit-=dt*0.35/(1+.3*up.d);else nit=Math.min(1,nit+dt*(.2+.05*up.r));
+const target=useN?430+up.m*28:B?200:MODELS[mi].bs;
+spd+=Math.max(-450*dt,Math.min(300*dt,target-spd));
+D+=spd*dt;tl-=dt;if(tl<=0){endTur('⏱ Süre doldu!');return}
+// trafik
+spawnT-=dt;if(spawnT<=0){spawnT=Math.max(.6,1-level*.03)+Math.random()*.3;spawn(D+vis.py+90)}
+for(const c of traffic)c.wy+=c.sp*dt;
+traffic=traffic.filter(c=>c.wy>D-160&&c.wy<D+1300);
+inv=Math.max(0,inv-dt);shake=Math.max(0,shake-dt);
+for(let i=0;i<traffic.length;i++){const c=traffic[i];
+if(inv<=0&&Math.abs(c.x-PX)<30&&Math.abs(c.wy-D)<54){
+traffic.splice(i,1);lives--;spd=100;inv=1.6;shake=.4;
+if(lives<=0){endTur('💥 Kaza!');return}break}}
+// hırsız
+let tsp=235+level*8+(th.boost>0?50:0);if(th.wy-D>450)tsp*=.9;
+th.wy+=tsp*dt;th.boost-=dt;th.bt-=dt;th.sw-=dt;
+if(th.bt<=0){th.boost=1.1;th.bt=Math.max(4,7-level*.25)+Math.random()*2}
+if(blocked(th.tl)){const o=[th.tl-1,th.tl+1].filter(l=>l>=0&&l<LN&&!blocked(l));if(o.length)th.tl=o[Math.random()*o.length|0]}
+else if(th.sw<=0){th.sw=1+Math.random()*1.5;const o=[th.tl-1,th.tl+1].filter(l=>l>=0&&l<LN&&!blocked(l));if(o.length&&Math.random()<.6)th.tl=o[Math.random()*o.length|0]}
+const tx=lane(th.tl);th.x+=Math.max(-170*dt,Math.min(170*dt,tx-th.x));
+const gap=th.wy-D;
+// yakalama
+if(Math.abs(th.x-PX)<55&&gap>-40&&gap<170)catchM+=dt/.8;else catchM=Math.max(0,catchM-dt*.8);
+if(catchM>=1){score++;wallet++;tl+=6;catchM=0;banner='YAKALANDI! +1 puan';bt=1.4;nit=Math.min(1,nit+.5);if(lives<MODELS[mi].hp)lives++;
+th.wy=D+320;th.tl=Math.random()*LN|0;th.x=lane(th.tl);th.boost=0;traffic=traffic.filter(c=>Math.abs(c.wy-th.wy)>150||c.l!=th.tl)}
+if(gap>1100){tl-=3;banner='KAÇTI! -3 sn';bt=1.4;th.wy=D+320;th.tl=Math.random()*LN|0;th.x=lane(th.tl);th.boost=0;catchM=0}
+bt=Math.max(0,bt-dt);
+document.getElementById('s1').textContent='❤️'.repeat(lives);
+document.getElementById('s2').textContent='⏱ '+Math.ceil(tl)+' sn';
+document.getElementById('s3').textContent='Tur '+tur+' · ⭐'+wallet}
+function car(x,y,body,kind,t,sty){
+ctx.save();ctx.translate(x,y);if(sty==1)ctx.scale(1.06,.97);if(sty==2)ctx.scale(1.1,1.05);
+ctx.fillStyle='#0005';ctx.beginPath();ctx.roundRect(-16,-30,36,66,7);ctx.fill();
+ctx.fillStyle=body;ctx.beginPath();ctx.roundRect(-18,-32,36,64,7);ctx.fill();
+if(sty==1){ctx.fillStyle='#fff';ctx.fillRect(-4,-32,3,64);ctx.fillRect(1,-32,3,64);ctx.fillStyle='#111';ctx.fillRect(-17,25,34,4)}
+if(sty==3){ctx.fillStyle='#111';ctx.fillRect(-9,-32,6,64);ctx.fillRect(3,-32,6,64);ctx.fillRect(-6,-28,12,8)}
+if(sty==2){ctx.fillStyle='#111';ctx.fillRect(-16,-8,3,28);ctx.fillRect(13,-8,3,28);ctx.fillRect(-18,-34,36,4)}
+ctx.fillStyle='#8cc4e8';ctx.beginPath();ctx.roundRect(-13,-16,26,12,3);ctx.fill();
+ctx.fillStyle='#6a9bb8';ctx.beginPath();ctx.roundRect(-13,10,26,9,3);ctx.fill();
+ctx.fillStyle='#fff8c0';ctx.fillRect(-15,-32,8,4);ctx.fillRect(7,-32,8,4);
+ctx.fillStyle='#d22';ctx.fillRect(-15,28,8,4);ctx.fillRect(7,28,8,4);
+if(kind=='police'){const on=Math.floor(t*8)%2;
+ctx.fillStyle=on?'#f22':'#511';ctx.fillRect(-12,-4,12,6);ctx.fillStyle=on?'#225':'#38f';ctx.fillRect(0,-4,12,6);
+ctx.fillStyle=on?'#f223':'#38f3';ctx.beginPath();ctx.arc(on?-6:6,-1,30,0,7);ctx.fill();
+ctx.fillStyle='#1a3a8a';ctx.fillRect(-18,-24,36,3)}
+ctx.restore()}
+function draw(now){
+const w=cv.width,h=cv.height,sc=Math.min(h/720,w/470);
+const vh=h/sc;vis.h=vh;vis.py=vh*.78;const PY=vis.py,t=now/1000;
+const sy=wy=>PY-(wy-D);
+ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#2f6b3a';ctx.fillRect(0,0,w,h);
+const sx=shake>0?(Math.random()-.5)*10*shake:0;
+ctx.setTransform(sc,0,0,sc,w/2+sx*sc,0);
+const hw=w/sc/2+10;
+// çimen ve ağaçlar
+const lo=D-(vh-PY)-80,hi=D+PY+80;
+for(let k=Math.floor(lo/110);k<=Math.floor(hi/110);k++)for(const sd of[-1,1]){
+const hs=(((k*2654435761)^(sd*97))>>>0)%100/100;
+const x=sd*(HALF+34+hs*(Math.max(10,hw-HALF-50)));if(Math.abs(x)>hw)continue;
+const y=sy(k*110+hs*60);
+ctx.fillStyle='#0004';ctx.beginPath();ctx.arc(x+4,y+4,16+hs*6,0,7);ctx.fill();
+ctx.fillStyle=hs>.5?'#1f5a2c':'#276e35';ctx.beginPath();ctx.arc(x,y,16+hs*6,0,7);ctx.fill()}
+// yol
+ctx.fillStyle='#3a3d45';ctx.fillRect(-HALF,0,RD,vh);
+ctx.fillStyle='#fff';ctx.fillRect(-HALF-5,0,5,vh);ctx.fillRect(HALF,0,5,vh);
+for(let i=1;i<LN;i++)for(let k=Math.floor(lo/70);k<=Math.floor(hi/70);k++)ctx.fillRect(-HALF+LW*i-2,sy(k*70+35),4,35);
+// araçlar
+for(const c of traffic){const y=sy(c.wy);if(y>-60&&y<vh+60)car(c.x,y,c.col,'n',t)}
+const ty=sy(th.wy);
+if(ty>-60&&ty<vh+60){car(th.x,ty,'#1c1c1f','thief',t);
+ctx.fillStyle='#ffd23f';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText('HIRSIZ',th.x,ty-42);
+if(th.boost>0){ctx.fillStyle='#fa4';ctx.beginPath();ctx.moveTo(th.x-8,ty+34);ctx.lineTo(th.x,ty+60);ctx.lineTo(th.x+8,ty+34);ctx.fill()}
+if(catchM>0){ctx.fillStyle='#000a';ctx.fillRect(th.x-30,ty-36,60,8);ctx.fillStyle='#4f4';ctx.fillRect(th.x-29,ty-35,58*Math.min(1,catchM),6)}}
+else{const up=ty<0,m=Math.round(Math.abs(th.wy-D)/10);
+ctx.fillStyle='#ffd23f';ctx.font='bold 14px system-ui';ctx.textAlign='center';
+const ay=up?70:vh-20;ctx.beginPath();const d=up?-1:1;
+ctx.moveTo(th.x,ay+d*0-12*(up?1:-1)*0);ctx.fillText((up?'▲ ':'▼ ')+m+' m',th.x,ay+(up?22:0))}
+if(!(inv>0&&Math.floor(inv*14)%2))car(PX,PY,MODELS[mi].col,'police',t,MODELS[mi].sty);
+if(spd>400){ctx.fillStyle='#fa4';ctx.beginPath();ctx.moveTo(PX-8,PY+34);ctx.lineTo(PX,PY+64);ctx.lineTo(PX+8,PY+34);ctx.fill()}
+// turbo çubuğu
+ctx.setTransform(sc,0,0,sc,w/2,0);
+ctx.fillStyle='#000a';ctx.fillRect(-HALF,vh-14,RD,8);ctx.fillStyle=nit>.2?'#fa4':'#f55';ctx.fillRect(-HALF+1,vh-13,(RD-2)*nit,6);
+if(bt>0){ctx.fillStyle='#fff';ctx.font='bold 30px system-ui';ctx.textAlign='center';ctx.strokeStyle='#000';ctx.lineWidth=5;ctx.strokeText(banner,0,vh*.35);ctx.fillText(banner,0,vh*.35)}}
+let last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;
+if(st=='play')update(dt);
+if(st=='menu'){D+=dt*200}
+draw(now);requestAnimationFrame(loop)}
+init();requestAnimationFrame(loop);
+</script></body></html>
